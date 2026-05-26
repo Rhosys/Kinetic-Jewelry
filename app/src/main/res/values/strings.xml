@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kinetic Jewelry</string>
+    <string name="notification_service_label">Kinetic Notification Listener</string>
+    <string name="tab_apps">Apps</string>
+    <string name="tab_devices">Devices</string>
+    <string name="tab_vibration">Vibration</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_simulator">BT Sim</string>
+    <string name="notification_channel_id">kinetic_bt_service</string>
+    <string name="notification_channel_name">Bluetooth Connection</string>
+    <string name="foreground_notification_title">Kinetic Jewelry Active</string>
+    <string name="foreground_notification_text">Monitoring notifications and Bluetooth devices</string>
+</resources>

@@ -1,0 +1,56 @@
+[versions]
+agp                 = "8.5.0"
+kotlin              = "2.0.0"
+ksp                 = "2.0.0-1.0.21"
+compose-bom         = "2024.06.00"
+hilt                = "2.51.1"
+room                = "2.6.1"
+lifecycle           = "2.8.2"
+navigation          = "2.7.7"
+coroutines          = "1.8.1"
+datastore           = "1.1.1"
+accompanist         = "0.34.0"
+junit               = "4.13.2"
+coroutines-test     = "1.8.1"
+
+[libraries]
+androidx-core-ktx           = { module = "androidx.core:core-ktx",                          version = "1.13.1" }
+androidx-lifecycle-runtime  = { module = "androidx.lifecycle:lifecycle-runtime-ktx",         version.ref = "lifecycle" }
+androidx-activity-compose   = { module = "androidx.activity:activity-compose",               version = "1.9.0" }
+
+compose-bom                 = { module = "androidx.compose:compose-bom",                     version.ref = "compose-bom" }
+compose-ui                  = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling-preview  = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-ui-tooling          = { module = "androidx.compose.ui:ui-tooling" }
+compose-material3           = { module = "androidx.compose.material3:material3" }
+compose-icons-extended      = { module = "androidx.compose.material:material-icons-extended" }
+
+navigation-compose          = { module = "androidx.navigation:navigation-compose",           version.ref = "navigation" }
+
+hilt-android                = { module = "com.google.dagger:hilt-android",                   version.ref = "hilt" }
+hilt-compiler               = { module = "com.google.dagger:hilt-android-compiler",          version.ref = "hilt" }
+hilt-navigation-compose     = { module = "androidx.hilt:hilt-navigation-compose",            version = "1.2.0" }
+
+room-runtime                = { module = "androidx.room:room-runtime",                       version.ref = "room" }
+room-ktx                    = { module = "androidx.room:room-ktx",                           version.ref = "room" }
+room-compiler               = { module = "androidx.room:room-compiler",                      version.ref = "room" }
+
+lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose",   version.ref = "lifecycle" }
+lifecycle-runtime-compose   = { module = "androidx.lifecycle:lifecycle-runtime-compose",     version.ref = "lifecycle" }
+
+kotlinx-coroutines-android  = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+
+datastore-preferences       = { module = "androidx.datastore:datastore-preferences",         version.ref = "datastore" }
+
+accompanist-permissions     = { module = "com.google.accompanist:accompanist-permissions",   version.ref = "accompanist" }
+
+junit                       = { module = "junit:junit",                                      version.ref = "junit" }
+kotlinx-coroutines-test     = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",   version.ref = "coroutines-test" }
+room-testing                = { module = "androidx.room:room-testing",                       version.ref = "room" }
+
+[plugins]
+android-application = { id = "com.android.application",             version.ref = "agp" }
+kotlin-android      = { id = "org.jetbrains.kotlin.android",         version.ref = "kotlin" }
+kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose",  version.ref = "kotlin" }
+hilt                = { id = "com.google.dagger.hilt.android",       version.ref = "hilt" }
+ksp                 = { id = "com.google.devtools.ksp",              version.ref = "ksp" }
