@@ -7,8 +7,9 @@ import com.rhosys.kineticjewelry.domain.repository.AppFilterRepository
 import com.rhosys.kineticjewelry.domain.repository.BluetoothDeviceRepository
 import com.rhosys.kineticjewelry.domain.repository.ContactFilterRepository
 import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
-class ProcessNotificationUseCase(
+class ProcessNotificationUseCase @Inject constructor(
     private val appFilterRepository: AppFilterRepository,
     private val contactFilterRepository: ContactFilterRepository,
     private val bluetoothDeviceRepository: BluetoothDeviceRepository,
