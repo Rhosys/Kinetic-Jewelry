@@ -1,7 +1,10 @@
 package com.rhosys.kineticjewelry.domain.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -155,5 +158,142 @@ class DomainModelInvariantTest {
         val buzzBlocks = VibrationMode.ESCALATING.blocks.filter { it.durationMs >= 40 && it != VibrationBlock.SHORT_PAUSE && it != VibrationBlock.MEDIUM_PAUSE && it != VibrationBlock.LONG_PAUSE }
         val durations = buzzBlocks.map { it.durationMs }
         assertEquals(durations.sorted(), durations)
+    }
+
+    // ── ContactFilter ────────────────────────────────────────────────────────
+
+    @Test
+    fun `ContactFilter isWatched null means inherit`() {
+        val contact = ContactFilter(
+            packageName = "com.example.app",
+            groupName = "",
+            contactName = "Alice",
+            isWatched = null,
+            vibrationMode = null,
+        )
+        assertNull("null isWatched signals inherit from parent", contact.isWatched)
+    }
+
+    @Test
+    fun `ContactFilter vibrationMode null means inherit`() {
+        val contact = ContactFilter(
+            packageName = "com.example.app",
+            groupName = "",
+            contactName = "Alice",
+            isWatched = true,
+            vibrationMode = null,
+        )
+        assertNull("null vibrationMode signals inherit from parent", contact.vibrationMode)
+    }
+
+    @Test
+    fun `ContactFilter explicit isWatched false overrides even when parent is watched`() {
+        val contact = ContactFilter(
+            packageName = "com.example.app",
+            groupName = "",
+            contactName = "Alice",
+            isWatched = false,
+            vibrationMode = null,
+        )
+        assertNotNull(contact.isWatched)
+        assertFalse(contact.isWatched!!)
+    }
+
+    @Test
+    fun `ContactFilter groupName empty string denotes direct contact`() {
+        val direct = ContactFilter("pkg", "", "Alice", null, null)
+        val grouped = ContactFilter("pkg", "Work Group", "Alice", null, null)
+        assertEquals("", direct.groupName)
+        assertEquals("Work Group", grouped.groupName)
+        assertNotEquals(direct, grouped)
+    }
+
+    @Test
+    fun `ContactFilter composite key distinguishes same name in different apps`() {
+        val inApp1 = ContactFilter("com.app.one", "", "Alice", true, null)
+        val inApp2 = ContactFilter("com.app.two", "", "Alice", true, null)
+        assertNotEquals(inApp1, inApp2)
+    }
+
+    @Test
+    fun `ContactFilter explicit vibrationMode is preserved`() {
+        val contact = ContactFilter(
+            packageName = "com.example.app",
+            groupName = "",
+            contactName = "Alice",
+            isWatched = true,
+            vibrationMode = VibrationMode.SOS,
+        )
+        assertEquals(VibrationMode.SOS, contact.vibrationMode)
+    }
+
+    // ── ConnectionState ──────────────────────────────────────────────────────
+
+    @Test
+    fun `ConnectionState has exactly four values`() {
+        assertEquals(4, ConnectionState.entries.size)
+    }
+
+    @Test
+    fun `ConnectionState contains DISCONNECTED CONNECTING CONNECTED ERROR`() {
+        val names = ConnectionState.entries.map { it.name }.toSet()
+        assertTrue(names.contains("DISCONNECTED"))
+        assertTrue(names.contains("CONNECTING"))
+        assertTrue(names.contains("CONNECTED"))
+        assertTrue(names.contains("ERROR"))
+    }
+
+    // ── BluetoothDeviceInfo ──────────────────────────────────────────────────
+
+    @Test
+    fun `BluetoothDeviceInfo address is the stable identity`() {
+        val d1 = BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", true, ConnectionState.CONNECTED)
+        val d2 = BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", true, ConnectionState.DISCONNECTED)
+        assertNotEquals("Different connectionState means different value object", d1, d2)
+        assertEquals(d1.address, d2.address)
+    }
+
+    @Test
+    fun `BluetoothDeviceInfo isAlertEnabled false creates paired-only device`() {
+        val device = BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", false, ConnectionState.DISCONNECTED)
+        assertFalse(device.isAlertEnabled)
+    }
+
+    @Test
+    fun `BluetoothDeviceInfo copy can update connectionState`() {
+        val original = BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", true, ConnectionState.DISCONNECTED)
+        val updated = original.copy(connectionState = ConnectionState.CONNECTED)
+        assertEquals(ConnectionState.CONNECTED, updated.connectionState)
+        assertEquals(original.address, updated.address)
+        assertEquals(original.isAlertEnabled, updated.isAlertEnabled)
+    }
+
+    // ── NotificationEvent ────────────────────────────────────────────────────
+
+    @Test
+    fun `NotificationEvent postedAt defaults to positive value`() {
+        val event = NotificationEvent(packageName = "com.example.app", senderName = "Alice", text = "Hi", category = null)
+        assertTrue("postedAt must be a positive epoch millis", event.postedAt > 0)
+    }
+
+    @Test
+    fun `NotificationEvent nullable fields can be null`() {
+        val event = NotificationEvent(packageName = "com.example.app", senderName = null, text = null, category = null)
+        assertNull(event.senderName)
+        assertNull(event.text)
+        assertNull(event.category)
+    }
+
+    @Test
+    fun `NotificationEvent two events at different times are not equal`() {
+        val t1 = NotificationEvent("pkg", "Alice", "Hi", null, postedAt = 1000L)
+        val t2 = NotificationEvent("pkg", "Alice", "Hi", null, postedAt = 2000L)
+        assertNotEquals(t1, t2)
+    }
+
+    @Test
+    fun `NotificationEvent packageName is required`() {
+        val event = NotificationEvent(packageName = "com.whatsapp", senderName = "Bob", text = "Hey", category = "msg")
+        assertEquals("com.whatsapp", event.packageName)
     }
 }
