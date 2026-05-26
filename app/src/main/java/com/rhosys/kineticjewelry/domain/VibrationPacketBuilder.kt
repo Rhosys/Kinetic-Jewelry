@@ -2,8 +2,9 @@ package com.rhosys.kineticjewelry.domain
 
 import com.rhosys.kineticjewelry.domain.model.ProtocolVersion
 import com.rhosys.kineticjewelry.domain.model.VibrationMode
+import javax.inject.Inject
 
-class VibrationPacketBuilder {
+class VibrationPacketBuilder @Inject constructor() {
 
     fun buildPackets(
         mode: VibrationMode,
