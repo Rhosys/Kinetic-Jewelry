@@ -7,5 +7,6 @@ data class AppFilter(
     val appLabel: String,
     val isWatched: Boolean,
     val vibrationMode: VibrationMode,
-    val iconDrawable: Drawable? = null
+    val isContactLevelEnabled: Boolean,
+    val iconDrawable: Drawable? = null,
 )
