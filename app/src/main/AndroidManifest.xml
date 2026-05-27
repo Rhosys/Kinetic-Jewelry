@@ -10,22 +10,11 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-    <!-- Bluetooth (API 31+) -->
+    <!-- Bluetooth (API 31+): connect only — no SCAN, no location -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission
-        android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-        tools:ignore="ProtectedPermissions" />
-
-    <!-- Foreground service for BT connections -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
     <uses-feature
         android:name="android.hardware.bluetooth_le"
@@ -50,11 +39,11 @@
             </intent-filter>
         </activity>
 
+        <!-- No foregroundServiceType — NotificationListenerService is system-bound -->
         <service
             android:name=".service.KineticNotificationListenerService"
             android:exported="true"
             android:label="@string/notification_service_label"
-            android:foregroundServiceType="connectedDevice"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
