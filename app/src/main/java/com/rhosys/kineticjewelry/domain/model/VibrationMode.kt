@@ -1,36 +1,44 @@
 package com.rhosys.kineticjewelry.domain.model
 
-enum class VibrationMode(val displayName: String, val pattern: List<Pair<Int, Int>>) {
-    SHORT_PULSE(
-        "Short Pulse",
-        listOf(100 to 100)
-    ),
-    LONG_PULSE(
-        "Long Pulse",
-        listOf(500 to 200)
-    ),
-    DOUBLE_TAP(
-        "Double Tap",
-        listOf(100 to 100, 100 to 200)
-    ),
-    HEARTBEAT(
-        "Heartbeat",
-        listOf(80 to 60, 200 to 400)
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.CLICK
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.LONG_BUZZ
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.LONG_PAUSE
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.MEDIUM_BUZZ
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.MEDIUM_PAUSE
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.SHORT_BUZZ
+import com.rhosys.kineticjewelry.domain.model.VibrationBlock.SHORT_PAUSE
+
+enum class VibrationMode(
+    val stableId: Int,
+    val displayName: String,
+    val blocks: List<VibrationBlock>,
+) {
+    SHORT_PULSE(1, "Short Pulse", listOf(SHORT_BUZZ)),
+    LONG_PULSE(2, "Long Pulse", listOf(LONG_BUZZ)),
+    DOUBLE_TAP(3, "Double Tap", listOf(CLICK, SHORT_PAUSE, CLICK)),
+    HEARTBEAT(4, "Heartbeat", listOf(SHORT_BUZZ, SHORT_PAUSE, MEDIUM_BUZZ, LONG_PAUSE)),
+    ESCALATING(
+        5, "Escalating",
+        listOf(CLICK, SHORT_PAUSE, SHORT_BUZZ, SHORT_PAUSE, MEDIUM_BUZZ, SHORT_PAUSE, LONG_BUZZ),
     ),
     SOS(
-        "SOS",
+        6, "SOS",
         listOf(
-            100 to 100, 100 to 100, 100 to 300,  // · · ·
-            300 to 100, 300 to 100, 300 to 300,  // — — —
-            100 to 100, 100 to 100, 100 to 700   // · · ·
-        )
-    ),
-    ESCALATING(
-        "Escalating",
-        listOf(50 to 200, 100 to 200, 200 to 200, 400 to 200)
+            // S ···
+            CLICK, SHORT_PAUSE, CLICK, SHORT_PAUSE, CLICK, MEDIUM_PAUSE,
+            // O ———
+            SHORT_BUZZ, SHORT_PAUSE, SHORT_BUZZ, SHORT_PAUSE, SHORT_BUZZ, MEDIUM_PAUSE,
+            // S ···
+            CLICK, SHORT_PAUSE, CLICK, SHORT_PAUSE, CLICK, LONG_PAUSE,
+        ),
     );
+
+    val totalDurationMs: Int get() = blocks.sumOf { it.durationMs }
 
     companion object {
         val default = SHORT_PULSE
+
+        fun fromStableId(id: Int): VibrationMode =
+            entries.firstOrNull { it.stableId == id } ?: default
     }
 }
