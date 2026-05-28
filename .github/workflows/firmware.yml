@@ -61,16 +61,38 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install BlueZ and D-Bus tools
+      - name: Install BlueZ and D-Bus dev headers
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y bluez libdbus-1-dev pkg-config
 
-      - name: Load virtual HCI kernel module
-        run: sudo modprobe hci_vhci
-
-      - name: Start BlueZ daemon and bring up adapter
+      - name: Grant CI user access to BlueZ D-Bus service
         run: |
+          # Write a policy that lets the current (non-root) user call BlueZ
+          # methods directly — avoids needing `sudo cargo test` at test time.
+          sudo tee /etc/dbus-1/system.d/bluetooth-ci.conf > /dev/null << POLICY
+          <!DOCTYPE busconfig PUBLIC
+           "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+           "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+          <busconfig>
+            <policy user="$(id -un)">
+              <allow own="org.bluez"/>
+              <allow send_destination="org.bluez"/>
+              <allow send_interface="org.bluez.Adapter1"/>
+              <allow send_interface="org.bluez.Device1"/>
+              <allow send_interface="org.bluez.GattManager1"/>
+              <allow send_interface="org.bluez.LEAdvertisingManager1"/>
+              <allow send_interface="org.freedesktop.DBus.ObjectManager"/>
+              <allow send_interface="org.freedesktop.DBus.Properties"/>
+              <allow send_interface="org.freedesktop.DBus.Introspectable"/>
+            </policy>
+          </busconfig>
+          POLICY
+          sudo systemctl reload dbus
+
+      - name: Load virtual HCI kernel module and start BlueZ
+        run: |
+          sudo modprobe hci_vhci
           sudo systemctl start bluetooth
           sleep 2
           sudo hciconfig hci0 up || true
@@ -88,8 +110,7 @@ jobs:
 
       - name: Run BLE integration tests
         working-directory: firmware/device-host
-        # Run as root so BlueZ D-Bus policy allows adapter control.
-        run: sudo -E env "PATH=$PATH" "HOME=$HOME" cargo test --test ble_integration -- --nocapture
+        run: cargo test --test ble_integration -- --nocapture
 
   # ── Tier 3: Kotlin ↔ Rust protocol round-trip ────────────────────────────────
   # Both sides read the same test-vectors.json. When the protocol changes,
