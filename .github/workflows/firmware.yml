@@ -1,0 +1,125 @@
+name: Firmware CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "firmware/**"
+      - "app/**"
+      - ".github/workflows/firmware.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - "app/**"
+      - ".github/workflows/firmware.yml"
+
+# ── Job map ───────────────────────────────────────────────────────────────────
+#
+#   protocol-unit-tests  (Tier 1 – runs now, no extra setup)
+#          │
+#          ├──► device-ble-integration  (Tier 2 – see TEST-SUITES-SPEC.md §A)
+#          │                             Disabled: needs device-host crate + vHCI
+#          │
+#          └──► kotlin-roundtrip        (Tier 3 – see TEST-SUITES-SPEC.md §B)
+#                                        Disabled: needs protocol finalised + vectors
+#
+# Remove the `if: false` guard from each job when its prerequisites are met.
+
+jobs:
+
+  # ── Tier 1: Protocol unit tests ─────────────────────────────────────────────
+  # Pure Rust, no hardware, no ESP toolchain. Runs on every push.
+  protocol-unit-tests:
+    name: "Protocol – unit tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: firmware/protocol -> target
+
+      - name: cargo test
+        working-directory: firmware/protocol
+        run: cargo test --verbose
+
+  # ── Tier 2: Device BLE integration (virtual HCI) ────────────────────────────
+  # Prerequisites – see firmware/TEST-SUITES-SPEC.md § Suite A:
+  #   • firmware/device-host/ crate (native BLE peripheral via `bluer`)
+  #   • MockGpio + integration test binary
+  #   • BlueZ + hci_vhci module available on runner
+  device-ble-integration:
+    name: "Device – BLE integration (virtual HCI)"
+    runs-on: ubuntu-latest
+    needs: protocol-unit-tests
+    if: false   # ← remove when Suite A is implemented
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install BlueZ
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bluez
+
+      - name: Load virtual HCI kernel module
+        run: sudo modprobe hci_vhci
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            firmware/protocol -> target
+            firmware/device-host -> target
+
+      - name: Build device-host binary
+        working-directory: firmware/device-host
+        run: cargo build --release
+
+      - name: Run BLE integration tests
+        working-directory: firmware/device-host
+        run: cargo test --test ble_integration -- --nocapture
+
+  # ── Tier 3: Kotlin ↔ Rust protocol round-trip ────────────────────────────────
+  # Prerequisites – see firmware/TEST-SUITES-SPEC.md § Suite B:
+  #   • Protocol finalised and test-vectors.json written
+  #   • firmware/protocol/tests/roundtrip.rs reads + validates vectors
+  #   • app ProtocolRoundtripTest.kt reads + validates vectors
+  kotlin-roundtrip:
+    name: "Protocol – Kotlin ↔ Rust round-trip"
+    runs-on: ubuntu-latest
+    needs: protocol-unit-tests
+    if: false   # ← remove when Suite B is implemented
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: firmware/protocol -> target
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Rust – round-trip vectors test
+        working-directory: firmware/protocol
+        run: cargo test --test roundtrip --verbose
+
+      - name: Kotlin – round-trip vectors test
+        working-directory: .
+        run: ./gradlew :app:testDebugUnitTest --tests "*.ProtocolRoundtripTest"
