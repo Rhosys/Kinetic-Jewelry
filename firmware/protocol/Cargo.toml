@@ -1,0 +1,12 @@
+[package]
+name    = "kinetic-protocol"
+version = "0.1.0"
+edition = "2021"
+
+# Pure, dependency-free protocol logic.
+# No esp-idf, no hardware — runs (and tests) on any host with `cargo test`.
+# This is the layer that changes when the wire protocol is finalised.
+
+[lib]
+name = "kinetic_protocol"
+path = "src/lib.rs"

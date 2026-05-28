@@ -11,6 +11,8 @@ harness = false   # no test harness – embedded binary
 opt-level = "s"   # optimise for size
 
 [dependencies]
+# Host-testable protocol layer (pure Rust, no esp-idf)
+kinetic-protocol = { path = "../protocol" }
 # ESP-IDF standard library layer
 esp-idf-svc = { version = "0.49", features = ["std"] }
 esp-idf-hal = "0.44"
