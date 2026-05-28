@@ -12,7 +12,7 @@ stub jobs for both; remove the `if: false` guard when each suite is ready.
 firmware/
   protocol/       pure Rust, host-testable — unit tests running today
   device/         esp-idf binary — only runs on ESP32-C3 hardware
-  device-host/    (Suite A) native Linux version for CI integration testing
+  device-host/    native Linux version for CI integration testing (Suite A ✓)
 ```
 
 ```
@@ -406,7 +406,7 @@ class ProtocolRoundtripTest {
 
 ## Summary: what unblocks each suite
 
-| Suite | Status | Unblocked when |
-|:------|:------:|:---------------|
-| A – Device BLE integration | pending | `firmware/device-host/` crate exists; `bluer`-based peripheral + `MockGpio` implemented |
+| Suite | Status | Notes |
+|:------|:------:|:------|
+| A – Device BLE integration | **live** | ✓ `firmware/device-host/` implemented; `bluer` peripheral + `MockGpio`; CI job enabled |
 | B – Kotlin ↔ Rust round-trip | **live** | ✓ `test-vectors.json` written; `roundtrip.rs` + `ProtocolRoundtripTest.kt` implemented |
