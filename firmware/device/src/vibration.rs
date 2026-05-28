@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use esp_idf_hal::gpio::{AnyOutputPin, Level, Output, PinDriver};
+use esp_idf_hal::gpio::{AnyOutputPin, Level, PinDriver};
 
 use crate::protocol::VibBlock;
 
@@ -40,7 +40,8 @@ pub fn run_thread(queue: Queue, motor_pin: AnyOutputPin, led_pin: AnyOutputPin) 
             let mut led   = PinDriver::output(led_pin).expect("led GPIO");
 
             loop {
-                match queue.lock().unwrap().pop_front() {
+                let next = queue.lock().unwrap().pop_front();
+                match next {
                     Some(step) => {
                         let lvl = if step.motor_on { Level::High } else { Level::Low };
                         motor.set_level(lvl).ok();

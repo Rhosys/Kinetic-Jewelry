@@ -2,6 +2,10 @@
 # Uses the standard Rust RISC-V target – no custom Xtensa LLVM required.
 # For ESP32 classic / S3 (Xtensa) change target to xtensa-esp32-espidf or
 # xtensa-esp32s3-espidf and install the Xtensa toolchain via `espup`.
+#
+# This config lives in firmware/device/ (NOT firmware/) so it only applies to
+# the firmware binary. The firmware/protocol crate stays on the host toolchain
+# and is testable with a plain `cargo test`.
 
 [build]
 target = "riscv32imc-esp-espidf"

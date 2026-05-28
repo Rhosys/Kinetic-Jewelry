@@ -1,5 +1,8 @@
 # ESP32-C3 uses the standard RISC-V target so nightly Rust suffices.
 # Run `rustup target add riscv32imc-unknown-none-elf` once after install.
+#
+# Lives in firmware/device/ so it does not force nightly/build-std on the
+# host-testable firmware/protocol crate.
 [toolchain]
 channel  = "nightly"
 targets  = ["riscv32imc-unknown-none-elf"]

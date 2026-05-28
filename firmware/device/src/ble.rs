@@ -1,5 +1,5 @@
 // BLE UUIDs live here because they are part of the wire protocol.
-// Update these alongside protocol.rs when the protocol spec is finalised.
+// Update these alongside the protocol crate when the protocol spec is finalised.
 //
 // Current values are placeholders that match no real spec; the structure
 // (service + two characteristics) is the stable part.
