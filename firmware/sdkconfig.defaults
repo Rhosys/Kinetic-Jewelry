@@ -1,0 +1,19 @@
+# ESP-IDF config for KineticJewel
+# Applied at build time by esp-idf-svc / embuild.
+
+# Enable BLE (NimBLE stack only – lighter than Bluedroid)
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_CONTROLLER_ENABLED=y
+
+# Peripheral role only – saves flash and RAM
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=n
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+
+# Disable WiFi entirely
+CONFIG_ESP_WIFI_ENABLED=n
+
+# Small stack for idle tasks
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192

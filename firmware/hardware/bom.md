@@ -1,33 +1,46 @@
-# Bill of Materials – KineticJewel Hardware
+# Bill of Materials – KineticJewel
 
-| Ref  | Description                          | Value / Part              | Qty | Notes                                         |
-|:-----|:-------------------------------------|:--------------------------|:---:|:----------------------------------------------|
-| U1   | Microcontroller                      | ESP32-C3 Super Mini       |  1  | Any ESP32-C3 board; WROOM-32 also works       |
-| U2   | LDO voltage regulator 3.3 V          | AMS1117-3.3 (SOT-223)     |  1  | MCP1700-3302E (TO-92) is a lower-Iq option    |
-| Q1   | NPN BJT transistor                   | 2N2222A or BC337          |  1  | hFE ≥ 100; handles 600 mA+ collector current  |
-| D1   | Flyback / clamping diode             | 1N4148                    |  1  | Protects Q1 from motor inductive spike        |
-| M1   | ERM coin vibration motor             | 8 mm × 3.4 mm, 3 V–5 V   |  1  | Seeed 107020000 or equivalent ~65–80 mA       |
-| LED1 | 3 mm LED                             | Green or white            |  1  | Any colour; Vf ≈ 2.0–2.2 V                    |
-| BT1  | Button cell battery holder (×3)      | LR44 / AG13 stacked       |  1  | Or 3× individual holders wired in series      |
-| BT–  | LR44 / AG13 alkaline button cell     | 1.5 V, ~150 mAh           |  3  | SR44 silver-oxide gives longer runtime        |
-| R1   | Resistor – transistor base           | 1 kΩ, 1/4 W               |  1  | Ensures transistor saturates fully            |
-| R2   | Resistor – LED current limit         | 220 Ω, 1/4 W              |  1  | Gives ~6 mA at 3.3 V supply                  |
-| C1   | Electrolytic capacitor – bulk        | 100 µF / 10 V             |  1  | Smooths battery internal-resistance droop     |
-| C2   | Electrolytic capacitor – LDO output  | 10 µF / 10 V              |  1  | Required by AMS1117 for stability             |
-| C3   | Ceramic capacitor – decoupling       | 100 nF / 10 V (0.1 µF)    |  1  | Place as close to ESP32 VCC pin as possible   |
+## Core components (buy these)
 
-## Optional / upgrades
+| Ref  | Part                         | Spec                              | Qty | Notes                                        |
+|:-----|:-----------------------------|:----------------------------------|:---:|:---------------------------------------------|
+| U1   | ESP32-C3 Super Mini          | 3.3 V, BLE 5.0, RISC-V           |  1  | DevKitM-1 for dev; Super Mini for final form |
+| U2   | LDO regulator                | AMS1117-3.3  (SOT-223)            |  1  | Skip if using a DevKit with onboard reg      |
+| Q1   | NPN transistor               | 2N2222A  or  BC337                |  1  | Motor switch; h_FE ≥ 100, I_c ≥ 600 mA      |
+| D1   | Signal diode                 | 1N4148                            |  1  | Flyback clamp across motor                   |
+| M1   | ERM coin vibration motor     | 8 mm × 3.4 mm, 3–5 V, ~70 mA     |  1  | Seeed 107020000 or equivalent                |
+| LED1 | 3 mm LED                     | Any colour, V_f ≈ 2.0 V           |  1  |                                              |
 
-| Ref  | Description                          | Value / Part              | Notes                                              |
-|:-----|:-------------------------------------|:--------------------------|:---------------------------------------------------|
-| SW1  | Tactile pushbutton                   | 6 mm × 6 mm               | Manual reset or future pairing button              |
-| LED2 | Second LED (status vs vibration)     | Red 3 mm                  | Separate BLE-connected indicator                   |
-| U3   | N-channel MOSFET (replaces Q1)       | 2N7002 or DMN2004K        | Lower Vgs(th) – better switch at 3.3 V GPIO level  |
-| J1   | Micro-USB or USB-C breakout          | –                         | 5 V power input for bench testing                  |
+## From your existing parts bin
 
-## Tools needed
+| Ref  | Part             | Value         | Qty | Purpose                                   |
+|:-----|:-----------------|:--------------|:---:|:------------------------------------------|
+| BT1  | LR44 / AG13      | 1.5 V each    |  3  | 4.5 V stack (or 2× for no-regulator build)|
+| —    | Battery holder   | 3× LR44       |  1  | Stacked or individual wired in series     |
+| R1   | Resistor         | 1 kΩ  ¼ W     |  1  | Transistor base drive                     |
+| R2   | Resistor         | 220 Ω  ¼ W    |  1  | LED current limiter                       |
+| C1   | Electrolytic cap | 100 µF / 10 V |  1  | Bulk supply decoupling (near battery +)   |
+| C2   | Electrolytic cap | 10 µF / 10 V  |  1  | LDO output stabilisation                  |
+| C3   | Ceramic cap      | 100 nF / 10 V |  1  | ESP32 VCC decoupling (place ≤5 mm away)   |
+
+## Tooling
 
 - Soldering iron + solder
-- Wire (28–30 AWG for signal, 24–26 AWG for power/motor)
-- Multimeter (continuity + voltage check)
-- USB–serial adapter (for first flash; also used by the ESP32-C3 USB-CDC after)
+- Multimeter (continuity + voltage)
+- USB–serial adapter (first flash only; ESP32-C3 has USB-CDC built in after)
+- `espflash` CLI: `cargo install espflash`
+
+## Power budget (worst case)
+
+| Load                    | Current  |
+|:------------------------|:--------:|
+| ESP32-C3 BLE active     |  ~25 mA  |
+| ESP32-C3 BLE TX peak    |  ~80 mA  |
+| ERM motor               |  ~70 mA  |
+| LED (on with motor)     |   ~6 mA  |
+| AMS1117 quiescent       |   ~5 mA  |
+| **Peak total**          | **~161 mA** |
+
+Three LR44 cells are rated ~150 mAh but internal resistance limits burst
+current; assume ~100 mAh effective.  The motor and BLE TX are only active in
+short bursts, so real-world runtime is many hours of standby between vibrations.
