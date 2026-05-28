@@ -81,4 +81,14 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.room.testing)
+    testImplementation("org.json:json:20240303")
+}
+
+// Pass the canonical test-vectors path to JVM unit tests so ProtocolRoundtripTest
+// can locate the file without guessing relative paths.
+tasks.withType<Test> {
+    systemProperty(
+        "protocolVectorsPath",
+        "${rootProject.projectDir}/firmware/protocol/tests/fixtures/test-vectors.json",
+    )
 }
