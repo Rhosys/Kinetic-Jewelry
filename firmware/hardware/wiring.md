@@ -1,130 +1,149 @@
 # KineticJewel – Circuit Design
 
-## Target module: ESP32-C3 Super Mini (or DevKitM-1 for development)
+## Components on hand
 
-The ESP32-C3 runs from **3.0 V – 3.6 V** on its VDD pins.  GPIO outputs are
-3.3 V logic.  The module is RISC-V based, which makes the Rust toolchain simpler
-(no custom Xtensa LLVM needed).
+| Part                | Notes                                              |
+|:--------------------|:---------------------------------------------------|
+| ESP32-C3 DevKitM-1  | Has onboard 5V→3.3V regulator; accepts 5V on VIN  |
+| 2N2222 NPN          | Motor switch transistor                            |
+| L7805CV             | Fixed 5V LDO – **needs ≥7V input**                |
+| LM2596 module       | Adjustable buck converter, 3–40V in, 1.5–35V out  |
+| LR44 cells          | 1.5V each                                          |
+| Resistors, caps     | ✓                                                  |
+| Flyback diode       | **You need one** – 1N4001 or 1N4148; without it   |
+|                     | the motor's inductive kick will damage the 2N2222  |
 
 ---
 
-## Power supply
+## Power design
 
-### Option A – DevKit with onboard 5 V → 3.3 V regulator (development)
+The ESP32-C3 DevKit takes **5V on its VIN pin** and has an onboard AMS1117-3.3
+that powers the chip.  The motor also runs from the 5V rail.
 
-If you have a 5 V source (USB, or your DC converter fed from 6–9 V):
+### Recommended path: LM2596 module → 5V
+
+The LM2596 module accepts 3–40V in and has a trimmer pot to set the output.
+Set the output to **5.0V** (measure with a multimeter while adjusting).
 
 ```
-  5 V source ──► [DevKit 5V / VIN pin]
+  Battery stack ──► [LM2596 IN+]
                          │
-                   [onboard AMS1117-3.3]
+                    [LM2596 module]  (turn trimmer until VOUT = 5.0V)
                          │
-                       3.3 V ──► ESP32-C3 VCC
-                       5 V  ──► motor rail (more force)
-                       GND  ──► GND
+                    [LM2596 OUT+] ──────────────────────► DevKit VIN
+                                  └──────────────────────► motor (+) rail
+  Battery (–) ──► [LM2596 IN–/OUT– GND] ──────────────► DevKit GND
 ```
 
-### Option B – LR44 batteries standalone (wearable)
+**Minimum battery stack for LM2596 → 5V:**
+The LM2596 needs ~1.5V headroom above its output, so input must be ≥ 6.5V.
 
-Three LR44 cells in series = 4.5 V nominal (drops to ~3.6 V at end of life).
-An AMS1117-3.3 LDO drops this to a clean 3.3 V for the ESP32.
-The motor is driven from the raw 4.5 V rail for full vibration force.
+| Battery option          | Voltage    | Notes                                     |
+|:------------------------|:----------:|:------------------------------------------|
+| 5× LR44 in series       | 7.5V       | Compact; 150 mAh per cell                 |
+| 4× AA alkaline          | 6V         | More capacity (~2500 mAh), larger          |
+| 9V PP3 ("square") block | 9V         | Easiest single battery; ~500 mAh          |
+
+### Alternative path: L7805 → 5V
+
+The L7805CV drops input to a fixed 5V but needs ≥7V in (it has ~2V dropout).
+It dissipates the excess as heat — less efficient than the LM2596.
 
 ```
-  LR44 × 3  (+4.5 V)
-     │
-     ├──[C1 100µF]──GND     ← absorbs current spikes from motor switching
-     │
-     ├──[AMS1117-3.3 IN]
-     │         │
-     │   [AMS1117-3.3 OUT]──[C2 10µF]──GND    ← LDO output cap (required)
-     │         │             [C3 100nF]──GND   ← decoupling cap (near ESP32)
-     │         │
-     │       3.3 V ──────────────────► ESP32-C3 VCC + LED circuit
-     │
-     └─────────────────────────────────────────► motor (+) terminal  [4.5 V]
-     GND ────────────────────────────────────► GND
+  ≥7V source ──► [L7805 IN]──[L7805 OUT]──► DevKit VIN  +  motor (+) rail
+  GND ──────────► [L7805 GND]
 ```
 
-> **2× LR44 shortcut (no regulator):**  Two cells = 3.0 V, which is within
-> spec for ESP32-C3 (min 2.3 V).  Works without the AMS1117 for a simpler
-> circuit, at the cost of ~15% less battery life and reduced motor force.
+Requires 5× LR44 (7.5V) or a 9V battery.
+Add 0.33µF ceramic cap on IN and 0.1µF on OUT (if not already on your DevKit).
 
 ---
 
 ## Vibration motor driver
 
-ERM coin motors draw 65–80 mA – far more than any GPIO can supply.
-An NPN transistor (2N2222A or BC337) switches the motor; a 1N4148 diode clamps
-the inductive spike when the motor is turned off.
+The 2N2222 switches the motor's ground leg; the motor positive goes straight to
+the 5V rail.  **A flyback diode across the motor is mandatory** — the coil
+inside the ERM motor produces a voltage spike when current is cut that will
+exceed the 2N2222's collector-emitter breakdown voltage (~40V spike is common
+from a small ERM motor).
 
 ```
-  Motor (+) ───────────────────────────── 4.5 V (or 5 V rail)
-  Motor (–) ──────────────── [Collector]
-                                   │
-  [1N4148 anode] ──── [Collector]  │   ← flyback diode
-  [1N4148 cathode] ─── motor (+)   │
-                                   │
-                             [2N2222A / BC337]
-                                   │
-                           [Base] ──── [R1 1 kΩ] ──── GPIO 4
-                                   │
-                             [Emitter]
-                                   │
-                                  GND
+  5V rail ──────────────────────────────── motor (+)
+                                               │
+                      [diode cathode] ─────────┘  ← flyback diode
+                      [diode anode] ──┐
+                                      │
+                                  motor (–)
+                                      │
+                                 [Collector]  2N2222
+                                      │
+  GPIO 4 ──[R1 1kΩ]──[Base]     [Emitter]
+                                      │
+                                     GND
 ```
 
-**Why 1 kΩ for R1?**
-GPIO output = 3.3 V, V_BE ≈ 0.7 V → I_base ≈ 2.6 mA.
-Motor draws ~70 mA; transistor h_FE ≥ 100 → needs ≥ 0.7 mA base.
-2.6 mA drives the transistor well into saturation at full motor current.
+**R1 sizing check (1 kΩ):**
+- GPIO high = 3.3V; V_BE ≈ 0.7V → I_base = (3.3 − 0.7) / 1000 = **2.6 mA**
+- Motor draws ~70 mA; h_FE for 2N2222 ≥ 100 → needs ≥ 0.7 mA base to saturate
+- 2.6 mA >> 0.7 mA ✓  — transistor is fully saturated at motor load
+
+The 2N2222 in TO-92 package: flat face toward you → left=Emitter, middle=Base, right=Collector.
 
 ---
 
 ## LED
 
 ```
-  GPIO 5 ──── [R2 220 Ω] ──── [LED anode] ──── [LED cathode] ──── GND
+  GPIO 5 ──[R2 220Ω]──[LED anode]──[LED cathode]──GND
 ```
 
-Forward current at 3.3 V: (3.3 – 2.0) / 220 ≈ **6 mA** — safe, visible.
-Adjust R2 to 330 Ω for dimmer / lower power, or 100 Ω for brighter.
+(3.3 − 2.0) / 220 ≈ 6 mA — safe and visible.
 
 ---
 
-## Complete pin map
+## Decoupling capacitors
 
-| Function    | GPIO (ESP32-C3) | Direction | Notes                       |
-|:------------|:---------------:|:---------:|:----------------------------|
-| Motor drive | 4               | Output    | HIGH = transistor on        |
-| LED         | 5               | Output    | HIGH = LED on               |
-| USB TX      | 21              | Output    | Serial monitor (115200)     |
-| USB RX      | 20              | Input     | (reserved for flashing)     |
+Place these as close to the ESP32-C3 DevKit VIN/GND pins as practical:
 
-> **Other ESP32 boards:** change `PIN_MOTOR` and `PIN_LED` in
-> `firmware/src/config.rs`.
+| Cap  | Value    | Purpose                                       |
+|:-----|:---------|:----------------------------------------------|
+| C1   | 100µF    | Bulk cap on 5V rail — absorbs motor-start surge|
+| C2   | 100nF    | High-frequency decoupling on DevKit VCC        |
 
 ---
 
-## Full topology summary
+## Pin map
+
+| Function    | GPIO | Direction | Notes                    |
+|:------------|:----:|:---------:|:-------------------------|
+| Motor drive | 4    | Output    | HIGH = 2N2222 on = motor |
+| LED         | 5    | Output    | HIGH = LED on            |
+
+---
+
+## Wiring summary
 
 ```
-  ┌──────────────────────────────────────────────────────────────┐
-  │  Power                                                        │
-  │   LR44×3 (+)  →  C1 100µF  →  AMS1117-3.3  →  3.3V → ESP32 │
-  │                            └────────────────────────→ motor+ │
-  │   LR44×3 (–)  →  GND                                         │
-  └──────────────────────────────────────────────────────────────┘
-  ┌──────────────────────────────────────────────────────────────┐
-  │  Motor                                                        │
-  │   GPIO4 → R1(1kΩ) → NPN base                                 │
-  │                      NPN collector → motor(–)                │
-  │                      NPN emitter   → GND                     │
-  │   motor(+) → 4.5V                                            │
-  │   1N4148: anode→collector, cathode→motor(+)                  │
-  └──────────────────────────────────────────────────────────────┘
-  ┌──────────────────────────────────────────────────────────────┐
-  │  LED                                                          │
-  │   GPIO5 → R2(220Ω) → LED(+) → LED(–) → GND                  │
-  └──────────────────────────────────────────────────────────────┘
+  [Battery]──[LM2596]─────5V──────────────────────► DevKit VIN
+                      └───5V──────────────────────► motor (+)
+                           │
+                          GND ──────────────────── DevKit GND
+
+  DevKit GPIO4 ──[1kΩ]──[2N2222 Base]
+               [2N2222 Emitter]──GND
+               [2N2222 Collector]──motor(–)
+               [flyback diode: anode→collector, cathode→motor(+)/5V]
+
+  DevKit GPIO5 ──[220Ω]──[LED+]──[LED–]──GND
+
+  [C1 100µF] between 5V and GND   (near LM2596 output / motor)
+  [C2 100nF] between DevKit VCC and GND
 ```
+
+---
+
+## Still needed
+
+- **Flyback diode** (1N4001 or 1N4148) — the single missing component.
+  Both are cheap and widely available.  The 1N4001 is a better choice here
+  (it's rated for higher surge current from the motor inrush).
