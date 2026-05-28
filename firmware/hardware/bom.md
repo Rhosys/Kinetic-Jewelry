@@ -1,34 +1,32 @@
 # Bill of Materials – KineticJewel
 
-## You already have
+## All components – confirmed on hand
 
-| Part              | Used for                          | Notes                             |
-|:------------------|:----------------------------------|:----------------------------------|
-| ESP32-C3 DevKit   | Microcontroller + BLE             | Has onboard 5V→3.3V regulator     |
-| 2N2222 NPN        | Motor switch transistor           | TO-92 package                     |
-| L7805CV           | 5V regulator (alternative path)   | Needs ≥7V input; less efficient   |
-| LM2596 module     | 5V regulator (recommended)        | Set trimmer to 5.0V before wiring |
-| LR44 cells        | Power source                      | Need 5× in series (7.5V) for L7805; or 4×AA for LM2596 |
-| Resistors         | R1 1kΩ (base), R2 220Ω (LED)      | Both common values                |
-| Capacitors        | C1 100µF bulk, C2 100nF decouple  | Electrolytic + ceramic            |
+| Ref  | Part                  | Value / Spec                    | Qty | Notes                                          |
+|:-----|:----------------------|:--------------------------------|:---:|:-----------------------------------------------|
+| U1   | ESP32-C3 DevKit       | 3.3V MCU + BLE 5.0              |  1  | Onboard 5V→3.3V regulator; flash via USB-CDC   |
+| VR1  | LM2596 module         | Adj. buck, 3–40V in → 5V out   |  1  | Set trimmer to 5.0V before connecting anything |
+| Q1   | 2N2222 NPN            | TO-92, I_c 600mA, h_FE ≥ 100  |  1  | Motor switch transistor                        |
+| D1   | Diode                 | 1N4001 or similar              |  1  | Flyback clamp across motor                     |
+| M1   | ERM coin motor        | 3–5V, ~70mA                    |  1  | 8mm × 3.4mm coin type recommended              |
+| LED1 | LED                   | Any colour, V_f ≈ 2.0V         |  1  | Status / vibration indicator                   |
+| BT1  | LR44 cells            | 1.5V each                      |  5  | In series = 7.5V → into LM2596 input          |
+| R1   | Resistor              | 1 kΩ  ¼W                       |  1  | 2N2222 base drive                             |
+| R2   | Resistor              | 220 Ω  ¼W                      |  1  | LED current limit                              |
+| C1   | Electrolytic cap      | 100 µF / 10V                   |  1  | Bulk decoupling on 5V rail, near motor         |
+| C2   | Ceramic cap           | 100 nF (0.1µF) / 10V           |  1  | High-freq decoupling, close to DevKit VCC pin  |
 
-## Still need to buy
+**Nothing missing — build when ready.**
 
-| Part              | Why                               | Common value / part               |
-|:------------------|:----------------------------------|:----------------------------------|
-| **Flyback diode** | Protects 2N2222 from motor spike  | **1N4001** (preferred) or 1N4148  |
-| Vibration motor   | The output device                 | ERM coin 8mm×3.4mm, 3–5V, ~70mA  |
-| LED               | Status indicator                  | Any 3mm, Vf ≈ 2.0V               |
-| Battery holder    | Holds cells in series             | 5×LR44 stacked, or AA 4-pack     |
+---
 
 ## Power options compared
 
-| Option                        | Efficiency | Size      | Notes                              |
-|:------------------------------|:----------:|:---------:|:-----------------------------------|
-| LM2596 + 5× LR44 (7.5V)      | ~85%       | Medium    | Recommended — flexible input range |
-| LM2596 + 9V PP3               | ~85%       | Small     | Easiest single battery             |
-| LM2596 + 4× AA (6V)          | ~85%       | Large     | Longest runtime (~2500 mAh/cell)   |
-| L7805 + 5× LR44 (7.5V)       | ~67%       | Medium    | Simpler circuit, wastes 33% as heat|
-| L7805 + 9V PP3                | ~56%       | Small     | Gets warm; not great for jewelry   |
+| Option                        | Efficiency | Notes                                       |
+|:------------------------------|:----------:|:--------------------------------------------|
+| LM2596 + 5× LR44 (7.5V)      | ~85%       | Recommended — all button cells, compact      |
+| LM2596 + 9V PP3 block         | ~85%       | Easiest single battery; ~500 mAh            |
+| LM2596 + 4× AA (6V)           | ~85%       | Longest runtime; larger physical footprint   |
+| L7805 + 5× LR44 (7.5V)        | ~67%       | Simpler but wastes ~33% as heat             |
 
-For jewelry the LM2596 with a 9V PP3 is the cleanest: one battery, compact, efficient.
+For wearable use: **LM2596 + 5× LR44** keeps the form factor small and efficient.
