@@ -406,8 +406,7 @@ class ProtocolRoundtripTest {
 
 ## Summary: what unblocks each suite
 
-| Suite | Unblocked when |
-|:------|:---------------|
-| A – Device BLE integration | `firmware/device-host/` crate exists; `bluer`-based peripheral + `MockGpio` implemented |
-| B – Kotlin ↔ Rust round-trip | Protocol finalised; `test-vectors.json` written; Kotlin builder updated |
-| Both | The `if: false` guard removed from the corresponding workflow job |
+| Suite | Status | Unblocked when |
+|:------|:------:|:---------------|
+| A – Device BLE integration | pending | `firmware/device-host/` crate exists; `bluer`-based peripheral + `MockGpio` implemented |
+| B – Kotlin ↔ Rust round-trip | **live** | ✓ `test-vectors.json` written; `roundtrip.rs` + `ProtocolRoundtripTest.kt` implemented |
