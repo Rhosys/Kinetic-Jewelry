@@ -17,6 +17,85 @@
 
 ---
 
+## Schematic (Mermaid)
+
+### Circuit connection diagram
+
+Power rails are circles; components are boxes. Edge labels name the terminal /
+net. The motor and flyback diode share the collector node (the diode sits in
+parallel across the motor).
+
+```mermaid
+flowchart TB
+    BAT["Battery<br/>5x LR44 = 7.5V"] -->|"+"| LM["LM2596 buck<br/>(trim to 5.0V)"]
+    BAT -->|"-"| GND(("GND"))
+    LM -->|"OUT 5V"| RAIL(("5V rail"))
+    LM -->|"OUT GND"| GND
+
+    RAIL --- C1["C1 100uF"]
+    C1 --- GND
+    RAIL -->|"VIN"| ESP["ESP32-C3<br/>DevKit"]
+    ESP --- C2["C2 100nF"]
+    C2 --- GND
+
+    ESP -->|"GPIO4"| R1["R1 1k ohm"]
+    R1 -->|"base"| Q1["Q1 2N2222"]
+    Q1 -->|"emitter"| GND
+    RAIL -->|"motor +"| M1["ERM motor"]
+    M1 -->|"motor -"| COL(("motor- /<br/>collector"))
+    COL -->|"collector"| Q1
+    RAIL -->|"cathode (band)"| D1["D1 flyback diode"]
+    D1 -->|"anode"| COL
+
+    ESP -->|"GPIO5"| R2["R2 220 ohm"]
+    R2 -->|"anode"| LED["LED"]
+    LED -->|"cathode"| GND
+
+    classDef net fill:#fffbe6,stroke:#b59f00,stroke-width:2px;
+    class RAIL,GND,COL net;
+```
+
+### Signal flow (phone → outputs)
+
+```mermaid
+flowchart LR
+    PHONE["Phone app<br/>(BLE central)"] <-->|"BLE GATT"| BLE
+
+    subgraph FW["ESP32-C3 firmware"]
+        direction TB
+        BLE["ble.rs<br/>GATT server"]
+        PROTO["protocol crate<br/>parse()"]
+        VIB["vibration.rs<br/>step queue + thread"]
+        BLE -->|"raw bytes"| PROTO
+        PROTO -->|"VibBlock list"| VIB
+    end
+
+    VIB -->|"GPIO4"| MD["2N2222 +<br/>ERM motor"]
+    VIB -->|"GPIO5"| LEDO["LED"]
+```
+
+### BLE interaction sequence
+
+```mermaid
+sequenceDiagram
+    participant P as Phone (central)
+    participant E as ESP32 (peripheral)
+    participant M as Motor / LED
+    P->>E: Connect
+    P->>E: Read firmware char 6b2f0004
+    E-->>P: 0x01 (protocol version)
+    P->>E: Write command char 6b2f0002<br/>[ver, cmd, repeat, blocks...]
+    E->>E: parse() -> Vibrate { blocks, repeat }
+    loop each block
+        E->>M: GPIO high/low for block duration
+    end
+    Note over P,E: phone may hold the connection<br/>for a response window
+    P->>E: Disconnect
+    Note over E: NimBLE auto-restarts advertising
+```
+
+---
+
 ## Power supply
 
 Set the LM2596 trimmer to **5.0V** before wiring anything else — measure with a
