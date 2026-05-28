@@ -1,0 +1,27 @@
+[package]
+name    = "kinetic-jewel-host"
+version = "0.1.0"
+edition = "2021"
+
+# Native-Linux BLE + MockGpio sibling of firmware/device.
+# Used by CI Suite A: real GATT over BlueZ virtual HCI, no hardware required.
+
+[lib]
+name = "kinetic_jewel_host"
+
+[[bin]]
+name = "kinetic-jewel-host"
+path = "src/main.rs"
+
+[dependencies]
+kinetic-protocol = { path = "../protocol" }
+bluer    = { version = "0.17", features = ["full"] }
+tokio    = { version = "1",    features = ["full"] }
+futures  = "0.3"
+anyhow   = "1"
+log      = "0.4"
+env_logger = "0.11"
+uuid     = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
