@@ -2,9 +2,12 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use log::info;
 
+// Protocol logic lives in its own host-testable crate; re-export it as
+// `crate::protocol` so the BLE/vibration modules reference it unchanged.
+pub use kinetic_protocol as protocol;
+
 mod ble;
 mod config;
-mod protocol;
 mod vibration;
 
 fn main() -> anyhow::Result<()> {
