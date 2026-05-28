@@ -87,15 +87,12 @@ jobs:
         run: cargo test --test ble_integration -- --nocapture
 
   # ── Tier 3: Kotlin ↔ Rust protocol round-trip ────────────────────────────────
-  # Prerequisites – see firmware/TEST-SUITES-SPEC.md § Suite B:
-  #   • Protocol finalised and test-vectors.json written
-  #   • firmware/protocol/tests/roundtrip.rs reads + validates vectors
-  #   • app ProtocolRoundtripTest.kt reads + validates vectors
+  # Both sides read the same test-vectors.json. When the protocol changes,
+  # update that file and both sides in the same PR — CI enforces agreement.
   kotlin-roundtrip:
     name: "Protocol – Kotlin ↔ Rust round-trip"
     runs-on: ubuntu-latest
     needs: protocol-unit-tests
-    if: false   # ← remove when Suite B is implemented
     steps:
       - uses: actions/checkout@v4
 
