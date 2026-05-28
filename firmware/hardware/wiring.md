@@ -1,139 +1,130 @@
-# Hardware Wiring – KineticJewel ESP32 BLE Device
+# KineticJewel – Circuit Design
 
-## Recommended build: ESP32-C3 Super Mini + 3× LR44 + ERM coin motor
+## Target module: ESP32-C3 Super Mini (or DevKitM-1 for development)
+
+The ESP32-C3 runs from **3.0 V – 3.6 V** on its VDD pins.  GPIO outputs are
+3.3 V logic.  The module is RISC-V based, which makes the Rust toolchain simpler
+(no custom Xtensa LLVM needed).
 
 ---
 
 ## Power supply
 
-Three LR44 button cells in series give a nominal 4.5 V (fresh) that tapers to
-~3.6 V as the cells discharge.  An AMS1117-3.3 LDO converts this cleanly to 3.3 V
-for the ESP32-C3 and the LED.  The vibration motor is driven directly from the 4.5 V
-rail for maximum vibration force.
+### Option A – DevKit with onboard 5 V → 3.3 V regulator (development)
+
+If you have a 5 V source (USB, or your DC converter fed from 6–9 V):
 
 ```
-  [LR44×3 in series]
-  (+)4.5V ─────┬──────────────────────────── VIN (motor power)
-               │
-             [C1 100µF]            ← bulk capacitor, electrolytic
-               │
-               ├──[AMS1117-3.3 IN]──[AMS1117-3.3 ADJ/GND]──GND
-               │         │
-               │    [AMS1117-3.3 OUT]
-               │         │
-               │    [C2 10µF]──GND    ← output cap, electrolytic
-               │         │
-               │    [C3 100nF]──GND   ← decoupling, ceramic
-               │         │
-               │       3.3V ──────────── VCC (ESP32-C3, LED circuit)
-               │
-  (–) GND ─────┴──────────────────────── GND
+  5 V source ──► [DevKit 5V / VIN pin]
+                         │
+                   [onboard AMS1117-3.3]
+                         │
+                       3.3 V ──► ESP32-C3 VCC
+                       5 V  ──► motor rail (more force)
+                       GND  ──► GND
 ```
 
-> **Simpler alternative (2× LR44, no regulator):**
-> Two LR44 in series = 3.0 V nominal.  The ESP32-C3 operates from 2.3 V–3.6 V, so
-> this works without a regulator at the cost of slightly shorter battery life and
-> reduced motor force.  Skip C1 and the AMS1117; connect the battery + directly to
-> the ESP32-C3 VCC pin and to the motor.
+### Option B – LR44 batteries standalone (wearable)
+
+Three LR44 cells in series = 4.5 V nominal (drops to ~3.6 V at end of life).
+An AMS1117-3.3 LDO drops this to a clean 3.3 V for the ESP32.
+The motor is driven from the raw 4.5 V rail for full vibration force.
+
+```
+  LR44 × 3  (+4.5 V)
+     │
+     ├──[C1 100µF]──GND     ← absorbs current spikes from motor switching
+     │
+     ├──[AMS1117-3.3 IN]
+     │         │
+     │   [AMS1117-3.3 OUT]──[C2 10µF]──GND    ← LDO output cap (required)
+     │         │             [C3 100nF]──GND   ← decoupling cap (near ESP32)
+     │         │
+     │       3.3 V ──────────────────► ESP32-C3 VCC + LED circuit
+     │
+     └─────────────────────────────────────────► motor (+) terminal  [4.5 V]
+     GND ────────────────────────────────────► GND
+```
+
+> **2× LR44 shortcut (no regulator):**  Two cells = 3.0 V, which is within
+> spec for ESP32-C3 (min 2.3 V).  Works without the AMS1117 for a simpler
+> circuit, at the cost of ~15% less battery life and reduced motor force.
 
 ---
 
 ## Vibration motor driver
 
-An ERM coin vibration motor draws ~65–80 mA — more than any ESP32 GPIO can supply
-directly.  An NPN transistor (2N2222A or BC337) switches the motor GND leg; the
-motor's +V is tied to VIN (4.5 V) for full vibration force.
-
-A flyback diode (1N4148) clamps the inductive kick when the motor is switched off.
+ERM coin motors draw 65–80 mA – far more than any GPIO can supply.
+An NPN transistor (2N2222A or BC337) switches the motor; a 1N4148 diode clamps
+the inductive spike when the motor is turned off.
 
 ```
-  VIN (4.5V) ──── [Motor +]──[Motor –]
-                                  │
-                             [1N4148 anode]   } flyback diode
-                                  │          }   cathode → VIN
-                             [Collector]
-                                  │
-  GPIO4 ──── [R1 1kΩ] ──── [Base]  2N2222A / BC337
-                                  │
+  Motor (+) ───────────────────────────── 4.5 V (or 5 V rail)
+  Motor (–) ──────────────── [Collector]
+                                   │
+  [1N4148 anode] ──── [Collector]  │   ← flyback diode
+  [1N4148 cathode] ─── motor (+)   │
+                                   │
+                             [2N2222A / BC337]
+                                   │
+                           [Base] ──── [R1 1 kΩ] ──── GPIO 4
+                                   │
                              [Emitter]
-                                  │
-                                 GND
+                                   │
+                                  GND
 ```
 
-**R1 (1 kΩ):** drives ≈2.6 mA into the base; saturates the transistor well above
-the ~1 mA needed to switch 80 mA of collector current (hFE ≥ 100 for both parts).
+**Why 1 kΩ for R1?**
+GPIO output = 3.3 V, V_BE ≈ 0.7 V → I_base ≈ 2.6 mA.
+Motor draws ~70 mA; transistor h_FE ≥ 100 → needs ≥ 0.7 mA base.
+2.6 mA drives the transistor well into saturation at full motor current.
 
 ---
 
-## LED indicator
-
-The LED lights whenever the motor vibrates (mirrors motor state).
+## LED
 
 ```
-  3.3V ─── [R2 220Ω] ─── [LED anode] ─── [LED cathode] ─── GND
-                                │
-                           GPIO5 drives this via software HIGH/LOW
+  GPIO 5 ──── [R2 220 Ω] ──── [LED anode] ──── [LED cathode] ──── GND
 ```
 
-Wait – GPIO5 drives the LED *directly* through a series resistor.  The LED is
-simply tied to GPIO5 output through R2.
-
-```
-  GPIO5 ─── [R2 220Ω] ─── [LED anode] ─── [LED cathode] ─── GND
-```
-
-Forward current ≈ (3.3 V − 2.0 V) / 220 Ω ≈ 6 mA — safe for any 3 mm / 5 mm LED
-and well within the ESP32 GPIO 40 mA limit.
+Forward current at 3.3 V: (3.3 – 2.0) / 220 ≈ **6 mA** — safe, visible.
+Adjust R2 to 330 Ω for dimmer / lower power, or 100 Ω for brighter.
 
 ---
 
 ## Complete pin map
 
-| Signal       | ESP32-C3 GPIO | Direction | Notes                        |
-|:-------------|:-------------:|:---------:|:-----------------------------|
-| Motor switch | GPIO 4        | Output    | HIGH = transistor on = motor |
-| LED          | GPIO 5        | Output    | HIGH = LED on                |
-| Serial TX    | GPIO 21       | Output    | Debug console (115200 baud)  |
-| Serial RX    | GPIO 20       | Input     | (unused, kept for flash)     |
+| Function    | GPIO (ESP32-C3) | Direction | Notes                       |
+|:------------|:---------------:|:---------:|:----------------------------|
+| Motor drive | 4               | Output    | HIGH = transistor on        |
+| LED         | 5               | Output    | HIGH = LED on               |
+| USB TX      | 21              | Output    | Serial monitor (115200)     |
+| USB RX      | 20              | Input     | (reserved for flashing)     |
 
-> For ESP32-WROOM-32 boards set `PIN_MOTOR=25` and `PIN_LED=26` in
-> `platformio.ini` `build_flags`.
-
----
-
-## Full assembly diagram (text)
-
-```
-                 ┌─────────────────────────┐
-  LR44×3 (+)────►│VIN                  GPIO4├────[1kΩ]────[NPN base]
-                 │                         │              [NPN col]──[Motor–]
-  LR44×3 (–)────►│GND                  GPIO5├────[220Ω]───[LED+]──[LED–]──GND
-                 │                         │
-  AMS1117 OUT───►│VCC   ESP32-C3           │
-                 │      Super Mini         │
-                 └─────────────────────────┘
-
-  Motor+ ──── VIN (4.5V)
-  1N4148: anode→NPN collector, cathode→VIN
-  C1 100µF:  VIN to GND  (bulk)
-  C2 10µF:   VCC to GND  (LDO output)
-  C3 100nF:  VCC to GND  (ESP32 decoupling, place close to VCC pin)
-```
+> **Other ESP32 boards:** change `PIN_MOTOR` and `PIN_LED` in
+> `firmware/src/config.rs`.
 
 ---
 
-## Power budget
+## Full topology summary
 
-| Component              | Typical current |
-|:-----------------------|----------------:|
-| ESP32-C3 BLE active    |        ~20 mA   |
-| ESP32-C3 BLE peak      |        ~80 mA   |
-| ERM coin motor (8 mm)  |        ~70 mA   |
-| LED (6 mA, on w/motor) |         ~6 mA   |
-| AMS1117 quiescent      |         ~5 mA   |
-| **Worst-case peak**    |    **~161 mA**  |
-
-Three LR44 cells (150 mAh each, but internal resistance limits burst current —
-consider them ≈100 mAh effective in this circuit).  Continuous worst-case: ~1.5 h.
-In practice the motor and BLE transmitter are only briefly active; expect many hours
-of real-world use between battery changes.
+```
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Power                                                        │
+  │   LR44×3 (+)  →  C1 100µF  →  AMS1117-3.3  →  3.3V → ESP32 │
+  │                            └────────────────────────→ motor+ │
+  │   LR44×3 (–)  →  GND                                         │
+  └──────────────────────────────────────────────────────────────┘
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Motor                                                        │
+  │   GPIO4 → R1(1kΩ) → NPN base                                 │
+  │                      NPN collector → motor(–)                │
+  │                      NPN emitter   → GND                     │
+  │   motor(+) → 4.5V                                            │
+  │   1N4148: anode→collector, cathode→motor(+)                  │
+  └──────────────────────────────────────────────────────────────┘
+  ┌──────────────────────────────────────────────────────────────┐
+  │  LED                                                          │
+  │   GPIO5 → R2(220Ω) → LED(+) → LED(–) → GND                  │
+  └──────────────────────────────────────────────────────────────┘
+```

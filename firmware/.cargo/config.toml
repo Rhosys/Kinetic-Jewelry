@@ -1,0 +1,21 @@
+# ── ESP32-C3 (RISC-V) ─────────────────────────────────────────────────────────
+# Uses the standard Rust RISC-V target – no custom Xtensa LLVM required.
+# For ESP32 classic / S3 (Xtensa) change target to xtensa-esp32-espidf or
+# xtensa-esp32s3-espidf and install the Xtensa toolchain via `espup`.
+
+[build]
+target = "riscv32imc-esp-espidf"
+
+[target.riscv32imc-esp-espidf]
+linker = "ldproxy"
+# `cargo run` flashes and opens the serial monitor in one step.
+runner = "espflash flash --monitor"
+rustflags = ["--cfg", "espidf_time64"]
+
+[env]
+ESP_IDF_VERSION = "v5.2.2"
+MCU             = "esp32c3"
+
+[unstable]
+build-std         = ["std", "panic_abort"]
+build-std-features = ["panic_immediate_abort"]
