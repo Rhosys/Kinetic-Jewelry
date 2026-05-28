@@ -205,26 +205,42 @@ Quick reference:
 
 ---
 
+## CI/CD conventions
+
+### Never use `sudo` to run application code
+
+`sudo` is only for infrastructure setup (apt-get, modprobe, systemctl, writing
+root-owned config files). It must never wrap `cargo`, `gradle`, `npm`, or any
+test runner — the language toolchain lives under the runner user's `$HOME` and
+is invisible to root.
+
+**Fix pattern:** grant the runner user access instead of escalating.
+
+- **D-Bus / BlueZ**: write a policy file in `/etc/dbus-1/system.d/` that
+  allows the runner user to send to `org.bluez.*`, then `sudo systemctl reload
+  dbus`. Run the tests as the normal user — no sudo at test time.
+  See `.github/workflows/firmware.yml § device-ble-integration` for the
+  working example.
+- **Device files**: `sudo chmod` or `sudo chown` the file in a setup step.
+- **Privileged ports**: `sudo setcap cap_net_bind_service+ep ./binary`.
+- **Group access**: `sudo usermod -a -G groupname $USER` + subshell with `sg`.
+
+Full rule with table of patterns: `CLAUDE.md` (read by Claude Code every
+session — that's what enforces this going forward).
+
+---
+
 ## TODO
 
-### Suite A — Device BLE integration tests 🔲
+### Suite A — Device BLE integration tests ✅
 
-**What**: native Linux firmware binary (`firmware/device-host/`) that swaps
-`esp32-nimble` for `bluer` and `esp-idf-hal` for a `MockGpio`. CI runs it
-against a virtual HCI adapter (`sudo modprobe hci_vhci`) as both peripheral
-and test central.
+Implemented in `firmware/device-host/`. CI job `device-ble-integration` is
+live (no `if: false` guard). 13 test cases cover: advertise, connect, firmware
+version read, single/repeat/mixed vibration, queue accumulation, unknown block
+skip, version + command rejection, disconnect/re-advertise, mutex-not-held-across-sleep.
 
-**Spec**: `firmware/TEST-SUITES-SPEC.md § Suite A` — 13 test cases specified,
-architecture diagrammed, CI steps written.
-
-**To enable**: implement `firmware/device-host/` per the spec, then remove
-`if: false` from the `device-ble-integration` job in `.github/workflows/firmware.yml`.
-
-**Minimum new files**:
-- `firmware/device-host/Cargo.toml`
-- `firmware/device-host/src/mock_gpio.rs`
-- `firmware/device-host/src/ble_peripheral.rs`  
-- `firmware/device-host/tests/ble_integration.rs`
+BlueZ access uses a D-Bus policy file (not `sudo cargo test`) — see CI/CD
+conventions above.
 
 ---
 
