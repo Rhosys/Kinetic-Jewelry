@@ -44,9 +44,12 @@ struct Harness {
 
 impl Harness {
     /// Start peripheral + connect central on the same adapter.
-    /// Returns Err (test skipped) if no virtual adapter is available.
+    /// Returns Err starting with "SKIP" (test skipped) if no virtual adapter is available.
     async fn new() -> Result<Self> {
-        let session = bluer::Session::new().await?;
+        let session = match bluer::Session::new().await {
+            Ok(s) => s,
+            Err(_) => anyhow::bail!("SKIP: D-Bus / bluetoothd not available"),
+        };
 
         let adapter = match session.default_adapter().await {
             Ok(a) => a,
@@ -54,7 +57,9 @@ impl Harness {
                 anyhow::bail!("SKIP: no Bluetooth adapter available (hci_vhci not loaded?)");
             }
         };
-        adapter.set_powered(true).await.context("adapter power on")?;
+        if let Err(e) = adapter.set_powered(true).await {
+            anyhow::bail!("SKIP: could not power adapter: {e}");
+        }
 
         let motor = MockGpio::new();
         let led   = MockGpio::new();
@@ -165,7 +170,10 @@ fn assert_duration(events: &[(Instant, bool)], idx: usize, expected_ms: u64, lab
 
 #[tokio::test]
 async fn test_01_advertises() -> Result<()> {
-    let session = bluer::Session::new().await?;
+    let session = match bluer::Session::new().await {
+        Ok(s) => s,
+        Err(_) => { eprintln!("SKIP test_01_advertises: no D-Bus"); return Ok(()); }
+    };
     let adapter = match session.default_adapter().await {
         Ok(a) => a,
         Err(_) => {
@@ -173,7 +181,10 @@ async fn test_01_advertises() -> Result<()> {
             return Ok(());
         }
     };
-    adapter.set_powered(true).await?;
+    if let Err(e) = adapter.set_powered(true).await {
+        eprintln!("SKIP test_01_advertises: cannot power adapter: {e}");
+        return Ok(());
+    }
 
     let queue = vibration::new_queue();
     let motor = MockGpio::new();
@@ -479,12 +490,18 @@ async fn test_11_unknown_command_rejected() -> Result<()> {
 
 #[tokio::test]
 async fn test_12_disconnect_readvertise() -> Result<()> {
-    let session = bluer::Session::new().await?;
+    let session = match bluer::Session::new().await {
+        Ok(s) => s,
+        Err(_) => { eprintln!("SKIP test_12: no D-Bus"); return Ok(()); }
+    };
     let adapter = match session.default_adapter().await {
         Ok(a) => a,
         Err(_) => { eprintln!("SKIP test_12: no adapter"); return Ok(()); }
     };
-    adapter.set_powered(true).await?;
+    if let Err(e) = adapter.set_powered(true).await {
+        eprintln!("SKIP test_12: cannot power adapter: {e}");
+        return Ok(());
+    }
 
     let queue = vibration::new_queue();
     let motor = MockGpio::new();

@@ -27,7 +27,6 @@ class DeviceManagerViewModel @Inject constructor(
         deviceRepo.observeAlertEnabled(),
         bluetoothController.connectedDevices,
     ) { dbDevices, connected ->
-        val connectedAddresses = connected.map { it.address }.toSet()
         dbDevices.map { d ->
             connected.firstOrNull { it.address == d.address } ?: d
         }
