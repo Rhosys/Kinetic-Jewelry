@@ -2,15 +2,16 @@
 
 ## Overview
 
-This design covers the complete pipeline for building, signing, and preparing the Kinetic-Jewelry Android app for Google Play Store deployment. The work spans seven areas:
+This design covers the complete pipeline for building, signing, and deploying the Kinetic-Jewelry Android app to the Google Play Store. The work spans eight areas:
 
 1. **Identity change** — Migrate applicationId, namespace, and all source packages from `com.rhosys.kineticjewelry` to `ch.rhosys.lyra`
-2. **Signing infrastructure** — Generate a KMS-encrypted PKCS12 keystore, commit the JSON artifact to `secrets/android-upload-signing.json`, and configure CI to decrypt at build time via OIDC role assumption
-3. **CI pipeline** — GitHub Actions workflow for compile, lint, and test on every push
-4. **Build pipeline** — GitHub Actions workflow producing debug APKs on PRs and signed release AABs on pushes to main, using OIDC + KMS decryption to obtain signing credentials
-5. **Documentation** — SIGNING.md, CI_CD.md, and SETUP.md covering the full process
-6. **Developer tooling** — Setup script, emulator management scripts, unified check command, and local build documentation
-7. **Code quality hooks** — Husky git hooks with commit-msg validation and lint-staged ktlint formatting
+2. **Signing infrastructure** — Generate a KMS-encrypted PKCS12 keystore, commit the JSON artifact to `deployment/android-upload-signing.json`, and configure CI to decrypt at build time via OIDC role assumption
+3. **CI pipeline** — GitLab CI jobs for compile, lint, and test on every push
+4. **Build pipeline** — GitLab CI jobs producing debug APKs on MRs (manual) and signed release AABs on main (manual), using OIDC + KMS decryption to obtain signing credentials
+5. **Deploy pipeline** — GitLab CI job that automatically uploads the signed AAB to the Play Store Internal Testing track via GCP Workload Identity Federation after a successful release build
+6. **GCP WIF infrastructure** — Terraform resource in `_rhosys-apps-infra/gcp/main.tf` binding the `gitlab-play-store` service account to the `rhosys/rapid/kinetic-jewelry` project path
+7. **Documentation** — SIGNING.md, CI_CD.md, and SETUP.md covering the full process
+8. **Developer tooling** — Setup script, emulator management scripts, unified check command, git hooks, and local build documentation
 
 The app uses AGP 8.5.0, Kotlin 2.0.0, JDK 17, Hilt, Room, and Jetpack Compose. Signing uses `android.injected.signing` Gradle properties (not a `signingConfigs` block), matching the pattern established in the cycle-tracker reference project.
 
@@ -19,29 +20,33 @@ The app uses AGP 8.5.0, Kotlin 2.0.0, JDK 17, Hilt, Room, and Jetpack Compose. S
 ```mermaid
 flowchart TD
     subgraph "Developer Machine"
-        A[generate-android-keystore --alias lyra] --> B[secrets/android-upload-signing.json]
+        A[generate-android-keystore --alias lyra] --> B[deployment/android-upload-signing.json]
     end
 
     subgraph "Repository"
-        B --> REPO[secrets/android-upload-signing.json<br/>keystore: base64 PKCS12<br/>passwordCiphertext: KMS ciphertext]
+        B --> REPO[deployment/android-upload-signing.json<br/>keystore: base64 PKCS12<br/>passwordCiphertext: KMS ciphertext]
     end
 
-    subgraph "GitHub Actions"
-        subgraph "CI Workflow (ci.yml)"
+    subgraph "GitLab CI (.gitlab-ci.yml)"
+        subgraph "validate + test stages"
             CI1[compileDebugKotlin]
             CI2[lintDebug]
             CI3[testDebugUnitTest]
         end
 
-        subgraph "Build Workflow (build-android.yml)"
-            PR[PR → assembleDebug → debug-apk artifact]
-            subgraph "Release signing (push to main)"
-                OIDC[aws-actions/configure-aws-credentials<br/>OIDC role assumption]
-                OIDC --> DECODE[jq .keystore → base64 --decode → /tmp/keystore.p12]
+        subgraph "build stage"
+            PR[MR → build-debug (manual) → debug APK artifact]
+            subgraph "build-release (manual, main only)"
+                OIDC[Write GITLAB_OIDC_TOKEN → aws.jwt<br/>AWS_ROLE_ARN = GitLabRunnerRole]
+                OIDC --> DECODE[jq .keystore → base64 --decode<br/>→ android/app/android-upload-signing.keystore]
                 OIDC --> DECRYPT[jq .passwordCiphertext → base64 --decode<br/>→ aws kms decrypt → STORE_PASSWORD]
-                DECODE --> GRADLE[./gradlew bundleRelease<br/>-Pandroid.injected.signing.store.file=/tmp/keystore.p12<br/>-Pandroid.injected.signing.store.password=...<br/>-Pandroid.injected.signing.key.alias=lyra<br/>-Pandroid.injected.signing.key.password=...]
+                DECODE --> GRADLE[./gradlew bundleRelease<br/>-Pandroid.injected.signing.store.file=...<br/>-Pandroid.injected.signing.store.password=...<br/>-Pandroid.injected.signing.key.alias=lyra<br/>-Pandroid.injected.signing.key.password=...]
                 DECRYPT --> GRADLE
             end
+        end
+
+        subgraph "deploy stage"
+            GRADLE --> DEPLOY[deploy-release (automatic)<br/>GCP WIF → gitlab-play-store SA<br/>deployment/deploy-play-store.ts<br/>→ Play Store internal track]
         end
 
         REPO --> DECODE
@@ -53,8 +58,13 @@ flowchart TD
         KMS --> DECRYPT
     end
 
+    subgraph "GCP (rhosys-apps)"
+        WIF[Workload Identity Pool: gitlab-oidc<br/>Provider: gitlab-com<br/>SA: gitlab-play-store]
+        WIF --> DEPLOY
+    end
+
     subgraph "Google Play Console"
-        GRADLE --> GP[Manual AAB upload to release track]
+        DEPLOY --> GP[Internal Testing track<br/>ch.rhosys.lyra]
     end
 ```
 
@@ -69,7 +79,7 @@ flowchart TD
 - Enable R8 minification for release builds
 - Reference proguard rules
 
-**No signingConfigs block.** Signing is handled entirely via `-Pandroid.injected.signing.*` command-line properties passed by the CI workflow. This keeps the build file clean and avoids any conditional logic for missing credentials — Gradle simply produces an unsigned build when the properties aren't provided.
+**No signingConfigs block.** Signing is handled entirely via `-Pandroid.injected.signing.*` command-line properties passed by the CI job. This keeps the build file clean and avoids any conditional logic for missing credentials — Gradle simply produces an unsigned build when the properties aren't provided.
 
 ### 2. Source Package Structure
 
@@ -99,7 +109,7 @@ Updated to reference `ch.rhosys.lyra`:
 -keep @dagger.hilt.android.AndroidEntryPoint class *
 ```
 
-### 4. Keystore JSON (`secrets/android-upload-signing.json`)
+### 4. Keystore JSON (`deployment/android-upload-signing.json`)
 
 Generated by `generate-android-keystore --alias lyra`. Structure:
 
@@ -119,23 +129,24 @@ This file is committed to the repo. The keystore itself is password-protected, a
 
 ### 5. Signing Configuration (CI Decryption)
 
-The release build workflow decrypts signing credentials inline — no environment variables stored externally, no signingConfigs block in Gradle. The CI runner assumes an OIDC role with `kms:Decrypt` permission, then:
+The `build-release` job decrypts signing credentials inline — no stored CI variables for secrets, no signingConfigs block in Gradle. The CI runner assumes an OIDC role with `kms:Decrypt` permission, then:
 
 ```bash
-# 1. Assume OIDC role (handled by aws-actions/configure-aws-credentials)
+# 1. Write OIDC token for AWS web identity
+echo "${GITLAB_OIDC_TOKEN}" > "${AWS_WEB_IDENTITY_TOKEN_FILE}"
 
 # 2. Extract and decode the keystore
-jq -r '.keystore' secrets/android-upload-signing.json | base64 --decode > /tmp/keystore.p12
+jq -r '.keystore' deployment/android-upload-signing.json | base64 --decode > android/app/android-upload-signing.keystore
 
 # 3. Decrypt the password (plaintext exists only in memory/shell variable)
-STORE_PASSWORD=$(jq -r '.passwordCiphertext' secrets/android-upload-signing.json \
+STORE_PASSWORD=$(jq -r '.passwordCiphertext' deployment/android-upload-signing.json \
   | base64 --decode \
   | aws kms decrypt --ciphertext-blob fileb:///dev/stdin --region eu-west-1 --output text --query Plaintext \
   | base64 --decode)
 
 # 4. Build with signing properties
 ./gradlew bundleRelease \
-  -Pandroid.injected.signing.store.file=/tmp/keystore.p12 \
+  -Pandroid.injected.signing.store.file="$CI_PROJECT_DIR/android/app/android-upload-signing.keystore" \
   -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
   -Pandroid.injected.signing.key.alias=lyra \
   -Pandroid.injected.signing.key.password="$STORE_PASSWORD"
@@ -146,44 +157,135 @@ Key points:
 - `STORE_PASSWORD` and `KEY_PASSWORD` are the same value (PKCS12 uses one password)
 - Plaintext exists only in memory/temp file for the duration of the job
 - The IAM role needs `kms:Decrypt` on `alias/deployment-encryption-key` in `eu-west-1`
+- Only one CI/CD variable required: `AWS_ACCOUNT_ID` = `981461567584`
 
-### 6. CI Workflow (`.github/workflows/ci.yml`)
+### 6. GitLab CI Pipeline (`.gitlab-ci.yml`)
 
-**Trigger:** Push to any branch, PR against any branch
+**Workflow rules:** Prevent double-running when a branch has an open MR.
 
-**Jobs (parallel):**
+```yaml
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+```
 
-| Job | Command | Purpose |
-|-----|---------|---------|
-| compile | `./gradlew compileDebugKotlin` | Catch compilation errors |
-| lint | `./gradlew lintDebug` | Android lint checks |
-| test | `./gradlew testDebugUnitTest` | Unit test suite |
+**Stages:** `validate`, `test`, `build`, `deploy`
 
-**Environment:** ubuntu-latest, Java 17 (Temurin), Gradle cache keyed on `*.gradle.kts` + `gradle.properties` + `libs.versions.toml`.
+**Default id_tokens:**
+```yaml
+default:
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.com
+```
 
-### 7. Build Workflow (`.github/workflows/build-android.yml`)
+**Image:** A lean Android SDK image with JDK 17 (e.g., `cimg/android:2024.01` or equivalent) for build and validate/test jobs. The `deploy-release` job uses `node:24` since it only needs Node.js.
 
-**Trigger:** Push to main, PR targeting main
+**Validate + Test jobs:**
 
-**PR path:**
+| Job | Stage | Command | Purpose |
+|-----|-------|---------|---------|
+| compile | validate | `./gradlew compileDebugKotlin` | Catch compilation errors |
+| lint | validate | `./gradlew lintDebug` | Android lint checks |
+| test | test | `./gradlew testDebugUnitTest` | Unit test suite |
+
+All validate/test jobs use branch-keyed Gradle cache.
+
+**Build jobs:**
+
+| Job | Stage | Trigger | Image |
+|-----|-------|---------|-------|
+| `build-debug` | build | Manual on MRs | `cimg/android:2024.01` (JDK 17 + Android SDK) |
+| `build-release` | build | Manual on main | `cimg/android:2024.01` (JDK 17 + Android SDK) |
+
+**Deploy job:**
+
+| Job | Stage | Trigger | Image |
+|-----|-------|---------|-------|
+| `deploy-release` | deploy | Automatic after `build-release` on main | `node:24` |
+
+### 7. Build Jobs Detail
+
+**`build-debug`** (manual, MR only):
 1. `./gradlew assembleDebug`
-2. Upload `debug-apk` artifact (7-day retention)
+2. Upload debug APK artifact (7-day retention)
 
-**Main path:**
-1. `aws-actions/configure-aws-credentials` — assume OIDC role with `kms:Decrypt` permission
-2. Extract keystore: `jq -r '.keystore' secrets/android-upload-signing.json | base64 --decode > /tmp/keystore.p12`
-3. Decrypt password: `jq -r '.passwordCiphertext' ... | base64 --decode | aws kms decrypt ... | base64 --decode`
-4. `./gradlew bundleRelease` with `-Pandroid.injected.signing.*` properties
-5. Upload `release-aab` artifact (30-day retention)
+**`build-release`** (manual, main only):
+1. Write `GITLAB_OIDC_TOKEN` to `$AWS_WEB_IDENTITY_TOKEN_FILE`
+2. Install AWS CLI
+3. Decode keystore from `deployment/android-upload-signing.json`
+4. Decrypt password via `aws kms decrypt`
+5. `./gradlew bundleRelease` with `-Pandroid.injected.signing.*` properties
+6. Upload signed AAB artifact (30-day retention)
 
-### 8. Documentation
+**Variables for `build-release`:**
+```yaml
+variables:
+  AWS_WEB_IDENTITY_TOKEN_FILE: "${CI_PROJECT_DIR}/aws.jwt"
+  AWS_DEFAULT_REGION: "eu-west-1"
+  AWS_ROLE_ARN: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitLabRunnerRole"
+```
 
-| File | Content |
-|------|---------|
-| `docs/SIGNING.md` | Keystore generation, KMS decryption pattern, OIDC role configuration, key rotation |
-| `docs/CI_CD.md` | Workflow triggers, jobs, caching, artifact retention, OIDC setup, manual Play Store upload |
+### 8. Deploy Job Detail (`deploy-release`)
 
-### 9. Developer Setup Script (`scripts/setup.sh`)
+Runs automatically after `build-release` succeeds on main. Uses GCP Workload Identity Federation to authenticate to the Play Store API without stored credentials.
+
+**Authentication flow:**
+```yaml
+variables:
+  GOOGLE_APPLICATION_CREDENTIALS: "/tmp/gcp-workload-identity.json"
+script:
+  - echo "${GITLAB_OIDC_TOKEN}" > /tmp/gcp-oidc.jwt
+  - echo '{"type":"external_account","audience":"//iam.googleapis.com/projects/454629444494/locations/global/workloadIdentityPools/gitlab-oidc/providers/gitlab-com","subject_token_type":"urn:ietf:params:oauth:token-type:id_token","token_url":"https://sts.googleapis.com/v1/token","credential_source":{"file":"/tmp/gcp-oidc.jwt"},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/gitlab-play-store@rhosys-apps.iam.gserviceaccount.com:generateAccessToken"}' > "$GOOGLE_APPLICATION_CREDENTIALS"
+  - npm run deploy:play-store
+```
+
+**How it works:**
+1. Write the GitLab OIDC token to `/tmp/gcp-oidc.jwt`
+2. Write a GCP external account credential JSON that references the OIDC token file, the WIF pool/provider, and the service account to impersonate
+3. `GOOGLE_APPLICATION_CREDENTIALS` points to this JSON — the Google Auth library handles the token exchange transparently
+4. Execute `deployment/deploy-play-store.ts` which uploads the AAB to the `internal` track for `ch.rhosys.lyra`
+
+### 9. Deploy Script (`deployment/deploy-play-store.ts`)
+
+Adapted from the cycle-tracker deploy script. Uses `@googleapis/androidpublisher` to upload the signed AAB to the Play Store Internal Testing track.
+
+**Key differences from cycle-tracker:**
+- Package name: `ch.rhosys.lyra` (not `ch.rhosys.cycletracker`)
+- AAB path: `app/build/outputs/bundle/release/app-release.aab` (no `android/` prefix — this is a native Kotlin project, not Expo)
+- Version name: read from `app/build.gradle.kts` or passed as env var
+
+**Core flow:**
+1. Create an edit for `ch.rhosys.lyra`
+2. Upload the AAB bundle
+3. Assign the uploaded version to the `internal` track with status `completed`
+4. Commit the edit
+
+**Error handling:**
+- If the app is in draft state on Play Console, retry the release with `draft` status and print a message indicating manual promotion is required
+- If the Play Store API returns 404 (package not found), exit non-zero with instructions for creating the app and uploading the first AAB manually via Play Console
+- If 401/403, diagnose whether it's a missing release or permission issue
+
+### 10. GCP Workload Identity Federation Infrastructure
+
+A single Terraform resource added to `_rhosys-apps-infra/gcp/main.tf`, following the same pattern as the existing `play_store_wif_cycle_tracker` binding:
+
+```hcl
+resource "google_service_account_iam_member" "play_store_wif_kinetic_jewelry" {
+  service_account_id = google_service_account.play_store.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.gitlab.name}/attribute.project_path/rhosys/rapid/kinetic-jewelry"
+}
+```
+
+This reuses the existing:
+- `google_iam_workload_identity_pool.gitlab` — the WIF pool with `gitlab-oidc` ID
+- `google_service_account.play_store` — the `gitlab-play-store` SA that has Play Store API access
+
+No new service accounts or pools are needed. The binding grants the `rhosys/rapid/kinetic-jewelry` GitLab project the ability to impersonate the `gitlab-play-store` service account.
+
+### 11. Developer Setup Script (`scripts/setup.sh`)
 
 **Responsibilities:**
 - Install all build prerequisites from a fresh clone to a working environment
@@ -197,79 +299,48 @@ Key points:
 4. **Accept licenses** — `yes | sdkmanager --licenses`
 5. **Write ANDROID_HOME to shell profiles** — Append an export block (guarded by a unique marker `# BEGIN lyra android sdk` / `# END lyra android sdk`) to `~/.bashrc`, `~/.zshrc`, and `~/.profile`. Skip if marker already present.
 6. **Validate KVM on Linux** — Check `/dev/kvm` exists. If CPU supports VT-x/AMD-V (`grep -Ec '(vmx|svm)' /proc/cpuinfo`) but `/dev/kvm` is missing, install `qemu-kvm`. Warn if CPU lacks virtualisation flags.
-7. **Install ktlint** — Download the standalone ktlint binary from GitHub releases to `$ANDROID_HOME/../ktlint`, make executable, and add to PATH in the marker block.
+7. **Install ktlint** — Download the standalone ktlint binary from GitHub releases, make executable, and add to PATH in the marker block.
 8. **Print next steps** — Restart terminal, run `scripts/emulator-create.sh`.
-
-**Note:** A minimal `package.json` exists in the repo root for Husky (the `prepare` script runs `husky`). This is exclusively for git hooks — not for the app build. The setup script does NOT run `npm install`; developers run it manually if they want hooks active.
 
 **Environment:**
 - `ANDROID_HOME` defaults to `$HOME/Android/Sdk`
 - `set -euo pipefail` for fail-fast behavior
 - Exit non-zero on any critical failure
 
-### 10. Emulator Scripts
+### 12. Emulator Scripts
 
 Three scripts for managing the development AVD:
 
 **`scripts/emulator-create.sh`:**
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-AVD_NAME="LyraAVD"
-SYSTEM_IMAGE="system-images;android-35;google_apis;x86_64"
-DEVICE_PROFILE="pixel_7"
-
-SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
-
-# Exit early if AVD already exists
-if "$AVDMANAGER" list avd 2>/dev/null | grep -q "Name: $AVD_NAME"; then
-  echo "Emulator '$AVD_NAME' already exists."
-  exit 0
-fi
-
-yes 2>/dev/null | "$SDKMANAGER" "$SYSTEM_IMAGE" || true
-echo "no" | "$AVDMANAGER" create avd \
-  --name "$AVD_NAME" \
-  --package "$SYSTEM_IMAGE" \
-  --device "$DEVICE_PROFILE" \
-  --force
-```
+- Download system image `system-images;android-35;google_apis;x86_64` via `sdkmanager`
+- Create AVD named `LyraAVD` using the Pixel 7 device profile
+- If AVD already exists, print message and exit 0 (idempotent)
 
 **`scripts/emulator-start.sh`:**
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-AVD_NAME="LyraAVD"
-AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
-
-if ! "$AVDMANAGER" list avd 2>/dev/null | grep -q "Name: $AVD_NAME"; then
-  echo "❌ AVD '$AVD_NAME' not found. Run: scripts/emulator-create.sh"
-  exit 1
-fi
-
-"$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" -no-snapshot-load
-```
+- Start `LyraAVD` emulator in foreground with `-no-snapshot-load`
+- If AVD doesn't exist, print error directing user to `scripts/emulator-create.sh` and exit 1
 
 **`scripts/emulator-delete.sh`:**
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-"$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" delete avd --name LyraAVD
-```
+- Delete AVD `LyraAVD` via `avdmanager delete avd --name LyraAVD`
 
 All scripts validate `ANDROID_HOME` is set and the SDK is installed before proceeding.
 
-### 11. Git Hooks (Husky)
+### 13. Git Hooks (Husky)
 
-**Minimal `package.json`** (repo root — for git hooks only, not app build):
+**Minimal `package.json`** (repo root — for git hooks and deploy script):
 ```json
 {
   "private": true,
-  "scripts": { "prepare": "husky" },
+  "scripts": {
+    "prepare": "husky",
+    "deploy:play-store": "tsx deployment/deploy-play-store.ts"
+  },
   "devDependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^15.3.0"
+    "lint-staged": "^15.3.0",
+    "tsx": "^4.0.0",
+    "@googleapis/androidpublisher": "^22.0.0",
+    "google-auth-library": "^9.0.0"
   },
   "lint-staged": {
     "*.kt": ["ktlint --format"]
@@ -293,11 +364,7 @@ fi
 npx lint-staged
 ```
 
-**Activation:** Running `npm install` triggers the `prepare` script which runs `husky`, installing the hooks into `.git/hooks/`. Developers who skip `npm install` simply don't get hooks — the app still builds fine.
-
-### 12. Lint-Staged + ktlint
-
-**ktlint installation:** The setup script downloads the standalone ktlint binary from GitHub releases (e.g., `https://github.com/pinterest/ktlint/releases/download/1.5.0/ktlint`) to a location on PATH (e.g., `$ANDROID_HOME/../ktlint`). This avoids adding a Gradle plugin or Node dependency for the linter.
+### 14. Lint-Staged + ktlint
 
 **lint-staged configuration** (in `package.json`):
 ```json
@@ -315,7 +382,7 @@ npx lint-staged
 - If ktlint finds unfixable errors, it exits non-zero and the commit is rejected
 - Fixed files are automatically re-staged by lint-staged
 
-### 13. .gitignore Additions
+### 15. .gitignore Additions
 
 Append to the existing `.gitignore` (preserving all current entries):
 
@@ -330,7 +397,7 @@ Append to the existing `.gitignore` (preserving all current entries):
 
 The existing `.gitignore` already contains `/local.properties`, `*.apk`, and `*.aab`.
 
-### 14. Unified Check (`scripts/check.sh`)
+### 16. Unified Check (`scripts/check.sh`)
 
 ```bash
 #!/usr/bin/env bash
@@ -338,67 +405,15 @@ set -euo pipefail
 ./gradlew compileDebugKotlin lintDebug testDebugUnitTest
 ```
 
-Single Gradle invocation that runs compilation, lint, and unit tests in sequence. Gradle's task dependency graph ensures they execute in the correct order. If any task fails, Gradle exits non-zero and the script propagates the failure.
+Single Gradle invocation that runs compilation, lint, and unit tests in sequence. If any task fails, Gradle exits non-zero and the script propagates the failure. This mirrors what CI runs, giving developers a local pre-push quality gate.
 
-This mirrors what CI runs, giving developers a local pre-push quality gate.
+### 17. Documentation
 
-### 15. Local Build Commands
-
-| Command | Output | Notes |
-|---------|--------|-------|
-| `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` | Unsigned debug APK for local testing |
-| `./gradlew bundleRelease` | `app/build/outputs/bundle/release/app-release.aab` | Unsigned AAB (no signing properties) |
-| `./gradlew bundleRelease -Pandroid.injected.signing.*` | Signed AAB | Requires decoded keystore + decrypted password |
-
-**Signed local build flow:**
-1. Decode keystore from JSON: `jq -r '.keystore' secrets/android-upload-signing.json | base64 --decode > /tmp/keystore.p12`
-2. Decrypt password via KMS: `jq -r '.passwordCiphertext' secrets/android-upload-signing.json | base64 --decode | aws kms decrypt --ciphertext-blob fileb:///dev/stdin --region eu-west-1 --output text --query Plaintext | base64 --decode`
-3. Build with signing: `./gradlew bundleRelease -Pandroid.injected.signing.store.file=/tmp/keystore.p12 -Pandroid.injected.signing.store.password="$STORE_PASSWORD" -Pandroid.injected.signing.key.alias=lyra -Pandroid.injected.signing.key.password="$STORE_PASSWORD"`
-
-This is identical to what CI does — developers with AWS credentials can produce signed builds locally.
-
-### 16. Setup Documentation (`docs/SETUP.md`)
-
-**Structure:**
-
-```markdown
-# Developer Setup Guide
-
-Everything runs through scripts. No Android Studio required.
-
-## Prerequisites
-- Java 17 and Android SDK (or just run setup.sh)
-
-## First-time setup
-- scripts/setup.sh (installs Java, SDK, ktlint, configures env)
-- Restart terminal
-- npm install (optional — enables git hooks)
-
-## Emulator setup
-- scripts/emulator-create.sh (one-time, downloads ~1.5GB system image)
-- scripts/emulator-start.sh (launches emulator)
-
-## Daily workflow
-- Start emulator → build and install → iterate
-
-## All commands
-| Command | What it does |
-|---------|--------------|
-| scripts/setup.sh | Install prerequisites, configure environment |
-| scripts/emulator-create.sh | Create LyraAVD emulator (run once) |
-| scripts/emulator-start.sh | Start the emulator |
-| scripts/emulator-delete.sh | Delete the emulator |
-| scripts/check.sh | Compile + lint + test (run before pushing) |
-| ./gradlew assembleDebug | Build debug APK |
-| ./gradlew bundleRelease | Build unsigned release AAB |
-| ./gradlew installDebug | Build and install on connected device |
-
-## Troubleshooting
-- ANDROID_HOME not found → restart terminal or source ~/.bashrc
-- Emulator won't start → check KVM: ls /dev/kvm
-- Java not found → sudo apt-get install openjdk-17-jdk
-- Gradle build fails → ./gradlew clean then retry
-```
+| File | Content |
+|------|---------|
+| `docs/SIGNING.md` | Keystore generation, `deployment/android-upload-signing.json` structure, KMS decryption pattern, OIDC role configuration, key rotation |
+| `docs/CI_CD.md` | GitLab CI pipeline stages/jobs, `build-release` trigger (manual, main), `deploy-release` (automatic after build-release), artifact retention, AWS OIDC config, GCP WIF config for Play Store deployment |
+| `docs/SETUP.md` | Prerequisites, `scripts/setup.sh`, emulator setup, daily workflow, command table, troubleshooting |
 
 ## Data Models
 
@@ -421,15 +436,29 @@ versionCode = 1          // Increment by 1 per Play Store upload
 versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 ```
 
-### OIDC Role Configuration
+### OIDC / WIF Configuration
 
 | Property | Value |
 |----------|-------|
-| Role ARN | Configured in workflow as `role-to-assume` |
-| Region | `eu-west-1` |
-| Permission | `kms:Decrypt` on `alias/deployment-encryption-key` |
-| Auth method | GitHub OIDC federation (`aws-actions/configure-aws-credentials`) |
-| Credential lifetime | Duration of the workflow job only |
+| AWS Role ARN | `arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitLabRunnerRole` |
+| AWS Region | `eu-west-1` |
+| AWS Permission | `kms:Decrypt` on `alias/deployment-encryption-key` |
+| AWS Auth method | GitLab OIDC → `GITLAB_OIDC_TOKEN` written to `$AWS_WEB_IDENTITY_TOKEN_FILE` |
+| CI Variable | `AWS_ACCOUNT_ID` = `981461567584` |
+| GCP WIF Pool | `gitlab-oidc` in project `rhosys-apps` (project number `454629444494`) |
+| GCP WIF Provider | `gitlab-com` |
+| GCP Service Account | `gitlab-play-store@rhosys-apps.iam.gserviceaccount.com` |
+| GCP Binding | `attribute.project_path/rhosys/rapid/kinetic-jewelry` |
+
+### Deploy Script Configuration
+
+| Property | Value |
+|----------|-------|
+| Package name | `ch.rhosys.lyra` |
+| AAB path | `app/build/outputs/bundle/release/app-release.aab` |
+| Track | `internal` |
+| Script path | `deployment/deploy-play-store.ts` |
+| npm script | `deploy:play-store` |
 
 ## Error Handling
 
@@ -446,12 +475,21 @@ versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 
 | Scenario | Behavior |
 |----------|----------|
-| Compilation failure | `compile` job fails, PR blocked by status check |
-| Lint errors | `lint` job fails, PR blocked |
-| Test failure | `test` job fails, PR blocked |
-| OIDC role assumption failure | `build-android.yml` fails at the `configure-aws-credentials` step with an error indicating the role could not be assumed (e.g., trust policy mismatch, missing OIDC provider) |
-| KMS decryption failure | `build-android.yml` fails at the `aws kms decrypt` step with an AccessDeniedException or InvalidCiphertextException — indicates either the role lacks `kms:Decrypt` permission or the ciphertext is corrupted |
-| Keystore base64 decode failure | `build-android.yml` fails at the `base64 --decode` step — indicates the `keystore` field in the JSON is malformed |
+| Compilation failure | `compile` job fails, MR blocked by pipeline status |
+| Lint errors | `lint` job fails, MR blocked |
+| Test failure | `test` job fails, MR blocked |
+| OIDC role assumption failure | `build-release` fails when writing the OIDC token or when AWS CLI attempts to use it — indicates trust policy mismatch or missing OIDC provider |
+| KMS decryption failure | `build-release` fails at `aws kms decrypt` with AccessDeniedException or InvalidCiphertextException — role lacks `kms:Decrypt` permission or ciphertext is corrupted |
+| Keystore base64 decode failure | `build-release` fails at `base64 --decode` — `keystore` field in JSON is malformed |
+
+### Deploy Failures
+
+| Scenario | Behavior |
+|----------|----------|
+| GCP WIF token exchange failure | `deploy-release` fails when Google Auth library attempts to exchange the OIDC token — WIF binding missing or misconfigured |
+| Play Store 404 (package not found) | Deploy script exits non-zero with instructions to create the app and upload first AAB manually via Play Console |
+| Play Store draft app error | Deploy script retries with `draft` status and prints message indicating manual promotion required |
+| Play Store 401/403 | Deploy script diagnoses whether it's a missing release or permission issue and prints actionable instructions |
 
 ### Keystore Generation Failures
 
@@ -491,7 +529,7 @@ versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 
 ## Testing Strategy
 
-**PBT is not applicable to this feature.** The work is entirely build configuration (Gradle DSL), CI/CD pipeline setup (GitHub Actions YAML), file restructuring, and documentation. There are no pure functions with meaningful input variation to test with property-based testing.
+**PBT is not applicable to this feature.** The work is entirely build configuration (Gradle DSL), CI/CD pipeline setup (GitLab CI YAML), infrastructure as code (Terraform), file restructuring, shell scripts, and documentation. There are no pure functions with meaningful input variation to test with property-based testing.
 
 ### Verification Approach
 
@@ -502,10 +540,14 @@ versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 | Unit tests pass | Regression | `./gradlew testDebugUnitTest` |
 | Release build with R8 | Smoke test | `./gradlew assembleRelease` (unsigned, verifies R8 rules) |
 | Signed AAB valid | Integration | `jarsigner -verify app/build/outputs/bundle/release/app-release.aab` |
-| CI workflow syntax | Validation | `actionlint` or GitHub's workflow validator |
+| CI pipeline syntax | Validation | GitLab CI lint (`/ci/lint` API endpoint) |
 | Keystore JSON structure | Manual | Verify JSON has `keystore` and `passwordCiphertext` fields |
 | KMS decrypt works | Manual | `aws kms decrypt --ciphertext-blob ...` returns plaintext |
-| OIDC role assumption | Manual | Trigger workflow on main, verify `configure-aws-credentials` step succeeds |
+| OIDC role assumption | Manual | Trigger `build-release` on main, verify AWS credentials work |
+| GCP WIF binding | Manual | Trigger `deploy-release`, verify token exchange succeeds |
+| Play Store upload | Manual | Verify AAB appears on Internal Testing track in Play Console |
+| Deploy script | Manual | Run `npm run deploy:play-store` after a successful build |
+| Terraform plan | Manual | `tofu plan` in `_rhosys-apps-infra/gcp/` shows the new binding |
 | Setup script installs Java | Manual | Run `scripts/setup.sh` on clean machine, verify `java -version` shows 17 |
 | Setup script installs SDK | Manual | Run `scripts/setup.sh`, verify `sdkmanager --list` works |
 | Emulator create | Manual | Run `scripts/emulator-create.sh`, verify `avdmanager list avd` shows LyraAVD |
@@ -517,7 +559,7 @@ versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 
 ### What Gets Tested in CI
 
-The CI workflow itself serves as the primary test harness:
+The CI pipeline itself serves as the primary test harness:
 - **compile job** validates the package rename didn't break anything
 - **lint job** validates no dead imports or references to old package
 - **test job** validates existing unit tests still pass after rename
@@ -529,3 +571,4 @@ Before first Play Store upload:
 2. `jarsigner -verify` confirms the AAB is properly signed
 3. Google Play Console accepts the AAB upload without errors
 4. App installs and runs correctly from Play Store internal testing track
+5. `deploy-release` job completes successfully and AAB appears on internal track
