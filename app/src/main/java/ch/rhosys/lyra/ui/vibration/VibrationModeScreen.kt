@@ -9,26 +9,43 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.VibrationMode
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun VibrationModeScreen(vm: VibrationModeViewModel = hiltViewModel()) {
     val alertDevices by vm.alertDevices.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LazyColumn(modifier = Modifier.padding(16.dp)) {
-        items(VibrationMode.entries) { mode ->
-            ModeCard(
-                mode = mode,
-                onTest = { vm.testMode(mode) },
-            )
+    LaunchedEffect(Unit) {
+        vm.snackbar.collectLatest { msg ->
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { innerPadding ->
+        LazyColumn(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
+            items(VibrationMode.entries) { mode ->
+                ModeCard(
+                    mode = mode,
+                    onTest = { vm.testMode(mode) },
+                )
+            }
         }
     }
 }
