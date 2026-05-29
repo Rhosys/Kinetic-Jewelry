@@ -1,0 +1,4 @@
+{
+  "keystore": "PLACEHOLDER — generate with: generate-android-keystore --alias lyra",
+  "passwordCiphertext": "PLACEHOLDER — KMS-encrypted password (base64-encoded ciphertext)"
+}

@@ -1,0 +1,133 @@
+# CI runs compile, lint, and unit tests on every push and MR.
+# build-release (manual, main only): signs the AAB with the KMS-backed keystore.
+# deploy-release (automatic after build-release): uploads to Play Store Internal Testing.
+#
+# workflow:rules prevents double-running when a branch has an open MR.
+#
+# Secrets/credentials in deployment/ — no CI variables needed except AWS_ACCOUNT_ID:
+#   android-upload-signing.json        keystore (base64 PKCS12) + KMS-encrypted password
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+stages:
+  - validate
+  - test
+  - build
+  - deploy
+
+default:
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.com
+
+# ── Validate + Test jobs (Android SDK + JDK 17) ──────────────────────────────
+
+.gradle-job:
+  image: cimg/android:2024.01
+  variables:
+    GRADLE_USER_HOME: '$CI_PROJECT_DIR/.gradle'
+    GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.caching=true'
+  cache:
+    key: gradle-$CI_COMMIT_REF_SLUG
+    paths:
+      - .gradle/
+
+compile:
+  extends: .gradle-job
+  stage: validate
+  script:
+    - ./gradlew compileDebugKotlin
+
+lint:
+  extends: .gradle-job
+  stage: validate
+  script:
+    - ./gradlew lintDebug
+
+test:
+  extends: .gradle-job
+  stage: test
+  script:
+    - ./gradlew testDebugUnitTest
+
+# ── Build jobs (Android SDK + JDK 17) ────────────────────────────────────────
+
+build-debug:
+  extends: .gradle-job
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+  script:
+    - ./gradlew assembleDebug
+  artifacts:
+    when: always
+    expose_as: 'Android Debug APK'
+    paths:
+      - app/build/outputs/apk/debug/app-debug.apk
+    expire_in: 7 days
+
+build-release:
+  extends: .gradle-job
+  stage: build
+  variables:
+    AWS_WEB_IDENTITY_TOKEN_FILE: "${CI_PROJECT_DIR}/aws.jwt"
+    AWS_DEFAULT_REGION: "eu-west-1"
+    AWS_ROLE_ARN: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitLabRunnerRole"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+      when: manual
+  script:
+    # Write OIDC token for AWS web identity (authenticates with KMS for signing)
+    - echo "${GITLAB_OIDC_TOKEN}" > "${AWS_WEB_IDENTITY_TOKEN_FILE}"
+    # Install AWS CLI to decrypt the signing password via KMS
+    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin
+    # Decode PKCS12 keystore from the signing JSON
+    - jq -r '.keystore' deployment/android-upload-signing.json | base64 --decode > app/android-upload-signing.keystore
+    # Decrypt signing password via KMS
+    - STORE_PASSWORD=$(jq -r '.passwordCiphertext' deployment/android-upload-signing.json | base64 --decode | aws kms decrypt --ciphertext-blob fileb:///dev/stdin --region eu-west-1 --output text --query Plaintext | base64 --decode)
+    # Build signed release AAB
+    - |
+      ./gradlew bundleRelease \
+        -Pandroid.injected.signing.store.file="$CI_PROJECT_DIR/app/android-upload-signing.keystore" \
+        -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+        -Pandroid.injected.signing.key.alias="lyra" \
+        -Pandroid.injected.signing.key.password="$STORE_PASSWORD"
+  artifacts:
+    when: always
+    expose_as: 'Android Release AAB'
+    paths:
+      - app/build/outputs/bundle/release/app-release.aab
+    expire_in: 30 days
+
+# ── Deploy job (Node.js — uploads AAB to Play Store) ─────────────────────────
+
+deploy-release:
+  image: node:24
+  stage: deploy
+  needs:
+    - job: build-release
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+  variables:
+    GOOGLE_APPLICATION_CREDENTIALS: "/tmp/gcp-workload-identity.json"
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - set -eo pipefail
+    - npm ci --cache .npm
+  script:
+    # Exchange GitLab OIDC token for GCP credentials for publishing
+    - echo "${GITLAB_OIDC_TOKEN}" > /tmp/gcp-oidc.jwt
+    - echo '{"type":"external_account","audience":"//iam.googleapis.com/projects/454629444494/locations/global/workloadIdentityPools/gitlab-oidc/providers/gitlab-com","subject_token_type":"urn:ietf:params:oauth:token-type:id_token","token_url":"https://sts.googleapis.com/v1/token","credential_source":{"file":"/tmp/gcp-oidc.jwt"},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/gitlab-play-store@rhosys-apps.iam.gserviceaccount.com:generateAccessToken"}' > "$GOOGLE_APPLICATION_CREDENTIALS"
+    # Upload AAB to Play Store Internal Testing track
+    - npm run deploy:play-store

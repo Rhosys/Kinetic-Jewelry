@@ -4,14 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
-    namespace = "com.rhosys.kineticjewelry"
+    namespace = "ch.rhosys.lyra"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.rhosys.kineticjewelry"
+        applicationId = "ch.rhosys.lyra"
         minSdk = 29
         targetSdk = 35
         versionCode = 1

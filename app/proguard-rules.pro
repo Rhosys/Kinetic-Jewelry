@@ -1,4 +1,4 @@
--keep class com.rhosys.kineticjewelry.data.local.db.** { *; }
+-keep class ch.rhosys.lyra.data.local.db.** { *; }
 -keep class * extends androidx.room.RoomDatabase
 -keepclassmembers class * extends androidx.room.RoomDatabase { *; }
 -keep @com.google.dagger.hilt.android.HiltAndroidApp class *
