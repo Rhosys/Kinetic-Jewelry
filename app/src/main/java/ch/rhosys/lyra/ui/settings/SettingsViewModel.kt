@@ -36,10 +36,17 @@ class SettingsViewModel @Inject constructor(
             .isIgnoringBatteryOptimizations(context.packageName)
 
     fun openNotificationListenerSettings(context: Context) {
-        context.startActivity(
+        val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
+                putExtra(
+                    Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                    ComponentName(context, KineticNotificationListenerService::class.java).flattenToString()
+                )
+            }
+        } else {
             Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+        }
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     fun openBatteryOptimizationSettings(context: Context) {

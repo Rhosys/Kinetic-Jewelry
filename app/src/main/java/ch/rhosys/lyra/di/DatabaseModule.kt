@@ -6,6 +6,7 @@ import ch.rhosys.lyra.data.local.db.AppDatabase
 import ch.rhosys.lyra.data.local.db.dao.AppFilterDao
 import ch.rhosys.lyra.data.local.db.dao.BluetoothDeviceDao
 import ch.rhosys.lyra.data.local.db.dao.ContactFilterDao
+import ch.rhosys.lyra.data.local.db.dao.NotificationHistoryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,6 +22,7 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "kinetic_jewelry.db")
+            .addMigrations(AppDatabase.MIGRATION_1_2)
             .build()
 
     @Provides
@@ -31,4 +33,7 @@ object DatabaseModule {
 
     @Provides
     fun provideBluetoothDeviceDao(db: AppDatabase): BluetoothDeviceDao = db.bluetoothDeviceDao()
+
+    @Provides
+    fun provideNotificationHistoryDao(db: AppDatabase): NotificationHistoryDao = db.notificationHistoryDao()
 }

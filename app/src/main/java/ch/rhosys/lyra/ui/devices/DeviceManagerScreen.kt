@@ -6,45 +6,106 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.ConnectionState
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
     val alertDevices by vm.alertDevices.collectAsState()
     val pairedDevices by vm.pairedDevices.collectAsState()
+    val scanResults by vm.scanResults.collectAsState()
+    val isScanning by vm.isScanning.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LazyColumn {
-        if (alertDevices.isNotEmpty()) {
-            item { SectionHeader("Alert-Enabled Devices") }
-            items(alertDevices, key = { it.address }) { device ->
-                AlertDeviceRow(
-                    device = device,
-                    onTest = { vm.testDevice(device.address) },
-                    onRemove = { vm.disableAlert(device.address) },
-                )
-                HorizontalDivider()
-            }
+    LaunchedEffect(Unit) {
+        vm.snackbar.collectLatest { msg ->
+            snackbarHostState.showSnackbar(msg)
         }
-        if (pairedDevices.isNotEmpty()) {
-            item { SectionHeader("Other Paired Devices") }
-            items(pairedDevices, key = { it.address }) { device ->
-                PairedDeviceRow(device = device, onEnable = { vm.enableAlert(device) })
-                HorizontalDivider()
+    }
+
+    val alertAddresses = alertDevices.map { it.address }.toSet()
+    val nearbyScanResults = scanResults.filter { it.address !in alertAddresses }
+    val isEmpty = alertDevices.isEmpty() && pairedDevices.isEmpty() && nearbyScanResults.isEmpty() && !isScanning
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { innerPadding ->
+        LazyColumn(modifier = Modifier.padding(innerPadding)) {
+            item {
+                OutlinedButton(
+                    onClick = { if (isScanning) vm.stopScan() else vm.startScan() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(if (isScanning) "Stop Scanning" else "Scan for Devices")
+                }
+            }
+            if (isScanning) {
+                item {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                }
+            }
+            if (nearbyScanResults.isNotEmpty()) {
+                item { SectionHeader("Nearby Devices") }
+                items(nearbyScanResults, key = { "scan_${it.address}" }) { device ->
+                    NearbyDeviceRow(device = device, onAdd = { vm.enableAlert(device) })
+                    HorizontalDivider()
+                }
+            }
+            if (alertDevices.isNotEmpty()) {
+                item { SectionHeader("Alert-Enabled Devices") }
+                items(alertDevices, key = { it.address }) { device ->
+                    AlertDeviceRow(
+                        device = device,
+                        onTest = { vm.testDevice(device.address) },
+                        onRemove = { vm.disableAlert(device.address) },
+                    )
+                    HorizontalDivider()
+                }
+            }
+            if (pairedDevices.isNotEmpty()) {
+                item { SectionHeader("Other Paired Devices") }
+                items(pairedDevices, key = { it.address }) { device ->
+                    PairedDeviceRow(device = device, onEnable = { vm.enableAlert(device) })
+                    HorizontalDivider()
+                }
+            }
+            if (isEmpty) {
+                item {
+                    Text(
+                        "No devices found. Scan or pair a device via Bluetooth settings.",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
     }
@@ -57,6 +118,25 @@ private fun SectionHeader(title: String) {
         style = MaterialTheme.typography.titleSmall,
         modifier = Modifier.padding(16.dp),
     )
+}
+
+@Composable
+private fun NearbyDeviceRow(
+    device: BluetoothDeviceInfo,
+    onAdd: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(device.name, style = MaterialTheme.typography.bodyLarge)
+            Text(device.address, style = MaterialTheme.typography.labelSmall)
+        }
+        IconButton(onClick = onAdd) {
+            Icon(Icons.Default.Add, contentDescription = "Add device")
+        }
+    }
 }
 
 @Composable
