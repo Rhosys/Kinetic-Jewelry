@@ -7,9 +7,9 @@ use kinetic_protocol::VibBlock;
 
 use crate::mock_gpio::MockGpio;
 
-struct Step {
-    motor_on:    bool,
-    duration_ms: u64,
+pub struct Step {
+    pub motor_on:    bool,
+    pub duration_ms: u64,
 }
 
 pub type Queue = Arc<Mutex<VecDeque<Step>>>;
