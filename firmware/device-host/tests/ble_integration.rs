@@ -123,10 +123,15 @@ async fn connect_central(adapter: &bluer::Adapter) -> Result<Device> {
             }
             Ok(Some(AdapterEvent::DeviceChanged(addr))) => {
                 let dev = adapter.device(addr)?;
-                if dev.name().await?.as_deref() == Some(DEVICE_NAME)
-                    && dev.is_connected().await?
-                {
-                    return Ok(dev);
+                if dev.name().await?.as_deref() == Some(DEVICE_NAME) {
+                    if dev.is_connected().await? {
+                        return Ok(dev);
+                    }
+                    // Known device re-advertising after a disconnect — connect to it.
+                    if dev.connect().await.is_ok() {
+                        tokio::time::sleep(Duration::from_millis(300)).await;
+                        return Ok(dev);
+                    }
                 }
             }
             _ => {}
