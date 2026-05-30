@@ -12,7 +12,7 @@
 // GATT central on the same adapter (BlueZ loopback via virtual HCI), exercises
 // one or more characteristics, and asserts on MockGpio events.
 
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
@@ -44,9 +44,12 @@ struct Harness {
 
 impl Harness {
     /// Start peripheral + connect central on the same adapter.
-    /// Returns Err (test skipped) if no virtual adapter is available.
+    /// Returns Err starting with "SKIP" (test skipped) if no virtual adapter is available.
     async fn new() -> Result<Self> {
-        let session = bluer::Session::new().await?;
+        let session = match bluer::Session::new().await {
+            Ok(s) => s,
+            Err(_) => anyhow::bail!("SKIP: D-Bus / bluetoothd not available"),
+        };
 
         let adapter = match session.default_adapter().await {
             Ok(a) => a,
@@ -54,7 +57,9 @@ impl Harness {
                 anyhow::bail!("SKIP: no Bluetooth adapter available (hci_vhci not loaded?)");
             }
         };
-        adapter.set_powered(true).await.context("adapter power on")?;
+        if let Err(e) = adapter.set_powered(true).await {
+            anyhow::bail!("SKIP: could not power adapter: {e}");
+        }
 
         let motor = MockGpio::new();
         let led   = MockGpio::new();
@@ -90,8 +95,6 @@ impl Harness {
 
 /// Scan on `adapter` until a device named DEVICE_NAME is found, then connect.
 async fn connect_central(adapter: &bluer::Adapter) -> Result<Device> {
-    let svc_uuid = Uuid::parse_str(SVC_UUID)?;
-
     let mut discovery = adapter.discover_devices_with_changes().await?;
 
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
@@ -110,17 +113,13 @@ async fn connect_central(adapter: &bluer::Adapter) -> Result<Device> {
             Ok(Some(AdapterEvent::DeviceAdded(addr))) => {
                 let dev = adapter.device(addr)?;
                 if dev.name().await?.as_deref() == Some(DEVICE_NAME) {
-                    dev.connect().await.context("connect")?;
+                    // Skip connect() if the device is already connected (e.g. re-discovered
+                    // after a previous test or returned immediately by discover_devices_with_changes).
+                    if !dev.is_connected().await? {
+                        dev.connect().await.context("connect")?;
+                    }
                     // Wait for service discovery to complete.
                     tokio::time::sleep(Duration::from_millis(300)).await;
-                    return Ok(dev);
-                }
-            }
-            Ok(Some(AdapterEvent::DeviceChanged(addr))) => {
-                let dev = adapter.device(addr)?;
-                if dev.name().await?.as_deref() == Some(DEVICE_NAME)
-                    && dev.is_connected().await?
-                {
                     return Ok(dev);
                 }
             }
@@ -165,7 +164,10 @@ fn assert_duration(events: &[(Instant, bool)], idx: usize, expected_ms: u64, lab
 
 #[tokio::test]
 async fn test_01_advertises() -> Result<()> {
-    let session = bluer::Session::new().await?;
+    let session = match bluer::Session::new().await {
+        Ok(s) => s,
+        Err(_) => { eprintln!("SKIP test_01_advertises: no D-Bus"); return Ok(()); }
+    };
     let adapter = match session.default_adapter().await {
         Ok(a) => a,
         Err(_) => {
@@ -173,7 +175,10 @@ async fn test_01_advertises() -> Result<()> {
             return Ok(());
         }
     };
-    adapter.set_powered(true).await?;
+    if let Err(e) = adapter.set_powered(true).await {
+        eprintln!("SKIP test_01_advertises: cannot power adapter: {e}");
+        return Ok(());
+    }
 
     let queue = vibration::new_queue();
     let motor = MockGpio::new();
@@ -190,7 +195,7 @@ async fn test_01_advertises() -> Result<()> {
             if let AdapterEvent::DeviceAdded(addr) = evt {
                 let dev = adapter.device(addr)?;
                 if dev.name().await?.as_deref() == Some(DEVICE_NAME) {
-                    let uuids: BTreeSet<_> = dev.uuids().await?.unwrap_or_default();
+                    let uuids: HashSet<Uuid> = dev.uuids().await?.unwrap_or_default();
                     assert!(uuids.contains(&svc_uuid), "service UUID not in advertisement");
                     return Ok::<_, anyhow::Error>(true);
                 }
@@ -223,7 +228,6 @@ async fn test_02_connects() -> Result<()> {
         "device is not connected after Harness::new()"
     );
 
-    let svc_uuid = Uuid::parse_str(SVC_UUID)?;
     let service_found = h.device.services().await?.iter().any(|_| true);
     assert!(service_found, "no GATT services discovered");
 
@@ -479,12 +483,18 @@ async fn test_11_unknown_command_rejected() -> Result<()> {
 
 #[tokio::test]
 async fn test_12_disconnect_readvertise() -> Result<()> {
-    let session = bluer::Session::new().await?;
+    let session = match bluer::Session::new().await {
+        Ok(s) => s,
+        Err(_) => { eprintln!("SKIP test_12: no D-Bus"); return Ok(()); }
+    };
     let adapter = match session.default_adapter().await {
         Ok(a) => a,
         Err(_) => { eprintln!("SKIP test_12: no adapter"); return Ok(()); }
     };
-    adapter.set_powered(true).await?;
+    if let Err(e) = adapter.set_powered(true).await {
+        eprintln!("SKIP test_12: cannot power adapter: {e}");
+        return Ok(());
+    }
 
     let queue = vibration::new_queue();
     let motor = MockGpio::new();

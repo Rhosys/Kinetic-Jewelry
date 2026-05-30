@@ -5,10 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -34,10 +34,10 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = backStack?.destination?.route
 
                 val tabs = listOf(
-                    Triple(Screen.Apps,      "Apps",      Icons.Default.Notifications),
-                    Triple(Screen.Devices,   "Devices",   Icons.Default.Star),
-                    Triple(Screen.Vibration, "Vibration", Icons.Default.Vibration),
-                    Triple(Screen.Settings,  "Settings",  Icons.Default.Settings),
+                    Triple(Screen.Apps,     "Apps",     Icons.Default.Notifications),
+                    Triple(Screen.Devices,  "Devices",  Icons.Default.Star),
+                    Triple(Screen.History,  "History",  Icons.Default.History),
+                    Triple(Screen.Settings, "Settings", Icons.Default.Settings),
                 )
 
                 Scaffold(
