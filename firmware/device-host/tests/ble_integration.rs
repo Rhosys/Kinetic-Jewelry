@@ -12,7 +12,7 @@
 // GATT central on the same adapter (BlueZ loopback via virtual HCI), exercises
 // one or more characteristics, and asserts on MockGpio events.
 
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
@@ -95,8 +95,6 @@ impl Harness {
 
 /// Scan on `adapter` until a device named DEVICE_NAME is found, then connect.
 async fn connect_central(adapter: &bluer::Adapter) -> Result<Device> {
-    let svc_uuid = Uuid::parse_str(SVC_UUID)?;
-
     let mut discovery = adapter.discover_devices_with_changes().await?;
 
     let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
@@ -115,23 +113,14 @@ async fn connect_central(adapter: &bluer::Adapter) -> Result<Device> {
             Ok(Some(AdapterEvent::DeviceAdded(addr))) => {
                 let dev = adapter.device(addr)?;
                 if dev.name().await?.as_deref() == Some(DEVICE_NAME) {
-                    dev.connect().await.context("connect")?;
+                    // Skip connect() if the device is already connected (e.g. re-discovered
+                    // after a previous test or returned immediately by discover_devices_with_changes).
+                    if !dev.is_connected().await? {
+                        dev.connect().await.context("connect")?;
+                    }
                     // Wait for service discovery to complete.
                     tokio::time::sleep(Duration::from_millis(300)).await;
                     return Ok(dev);
-                }
-            }
-            Ok(Some(AdapterEvent::DeviceChanged(addr))) => {
-                let dev = adapter.device(addr)?;
-                if dev.name().await?.as_deref() == Some(DEVICE_NAME) {
-                    if dev.is_connected().await? {
-                        return Ok(dev);
-                    }
-                    // Known device re-advertising after a disconnect — connect to it.
-                    if dev.connect().await.is_ok() {
-                        tokio::time::sleep(Duration::from_millis(300)).await;
-                        return Ok(dev);
-                    }
                 }
             }
             _ => {}
@@ -206,7 +195,7 @@ async fn test_01_advertises() -> Result<()> {
             if let AdapterEvent::DeviceAdded(addr) = evt {
                 let dev = adapter.device(addr)?;
                 if dev.name().await?.as_deref() == Some(DEVICE_NAME) {
-                    let uuids: BTreeSet<_> = dev.uuids().await?.unwrap_or_default();
+                    let uuids: HashSet<Uuid> = dev.uuids().await?.unwrap_or_default();
                     assert!(uuids.contains(&svc_uuid), "service UUID not in advertisement");
                     return Ok::<_, anyhow::Error>(true);
                 }
@@ -239,7 +228,6 @@ async fn test_02_connects() -> Result<()> {
         "device is not connected after Harness::new()"
     );
 
-    let svc_uuid = Uuid::parse_str(SVC_UUID)?;
     let service_found = h.device.services().await?.iter().any(|_| true);
     assert!(service_found, "no GATT services discovered");
 
