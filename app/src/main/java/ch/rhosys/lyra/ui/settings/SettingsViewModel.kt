@@ -8,12 +8,16 @@ import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.rhosys.lyra.data.AppLogger
+import ch.rhosys.lyra.data.LogEntry
 import ch.rhosys.lyra.data.notification.NotificationEventBus
 import ch.rhosys.lyra.service.KineticNotificationListenerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -21,17 +25,33 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val eventBus: NotificationEventBus,
+    private val logger: AppLogger,
 ) : ViewModel() {
 
-    val listenerEnabled: Boolean
-        get() = NotificationManagerCompat.getEnabledListenerPackages(context)
-            .contains(context.packageName)
+    private val _listenerEnabled = MutableStateFlow(checkListenerEnabled())
+    val listenerEnabled: StateFlow<Boolean> = _listenerEnabled.asStateFlow()
 
     val listenerConnected: StateFlow<Boolean> = eventBus.listenerConnected
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val batteryOptimizationIgnored: Boolean
-        get() = (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
+    val logEntries: StateFlow<List<LogEntry>> = logger.entries
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _batteryOptimizationIgnored = MutableStateFlow(checkBatteryOptimization())
+    val batteryOptimizationIgnored: StateFlow<Boolean> = _batteryOptimizationIgnored.asStateFlow()
+
+    /** Call from onResume or LaunchedEffect to refresh after returning from Settings. */
+    fun refreshStatus() {
+        _listenerEnabled.value = checkListenerEnabled()
+        _batteryOptimizationIgnored.value = checkBatteryOptimization()
+    }
+
+    private fun checkListenerEnabled(): Boolean =
+        NotificationManagerCompat.getEnabledListenerPackages(context)
+            .contains(context.packageName)
+
+    private fun checkBatteryOptimization(): Boolean =
+        (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
             .isIgnoringBatteryOptimizations(context.packageName)
 
     fun openNotificationListenerSettings(context: Context) {
@@ -60,4 +80,6 @@ class SettingsViewModel @Inject constructor(
             ComponentName(context, KineticNotificationListenerService::class.java)
         )
     }
+
+    fun clearLogs() { logger.clear() }
 }

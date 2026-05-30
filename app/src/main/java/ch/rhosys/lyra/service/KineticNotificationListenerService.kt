@@ -3,6 +3,7 @@ package ch.rhosys.lyra.service
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.data.notification.NotificationEventBus
 import ch.rhosys.lyra.domain.model.NotificationEvent
 import ch.rhosys.lyra.domain.model.NotificationHistoryEntry
@@ -22,6 +23,7 @@ class KineticNotificationListenerService : NotificationListenerService() {
     @Inject lateinit var processNotification: ProcessNotificationUseCase
     @Inject lateinit var eventBus: NotificationEventBus
     @Inject lateinit var notificationHistoryRepository: NotificationHistoryRepository
+    @Inject lateinit var logger: AppLogger
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -32,11 +34,13 @@ class KineticNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         eventBus.setListenerConnected(true)
+        logger.info("NotificationListener connected")
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         eventBus.setListenerConnected(false)
+        logger.warn("NotificationListener disconnected")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {

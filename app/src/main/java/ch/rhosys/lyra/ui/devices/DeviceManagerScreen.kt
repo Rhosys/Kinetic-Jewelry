@@ -1,5 +1,7 @@
 package ch.rhosys.lyra.ui.devices
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,10 +34,24 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.ConnectionState
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.flow.collectLatest
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
+    val blePermissions = rememberMultiplePermissionsState(
+        buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                add(Manifest.permission.BLUETOOTH_SCAN)
+                add(Manifest.permission.BLUETOOTH_CONNECT)
+            } else {
+                add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        }
+    )
+
     val alertDevices by vm.alertDevices.collectAsState()
     val pairedDevices by vm.pairedDevices.collectAsState()
     val scanResults by vm.scanResults.collectAsState()
@@ -45,6 +61,13 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) {
         vm.snackbar.collectLatest { msg ->
             snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    // Auto-start scan once permissions are granted
+    LaunchedEffect(blePermissions.allPermissionsGranted) {
+        if (blePermissions.allPermissionsGranted && !isScanning) {
+            vm.startScan()
         }
     }
 
@@ -58,12 +81,36 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
         LazyColumn(modifier = Modifier.padding(innerPadding)) {
             item {
                 OutlinedButton(
-                    onClick = { if (isScanning) vm.stopScan() else vm.startScan() },
+                    onClick = {
+                        if (isScanning) {
+                            vm.stopScan()
+                        } else if (blePermissions.allPermissionsGranted) {
+                            vm.startScan()
+                        } else {
+                            blePermissions.launchMultiplePermissionRequest()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Text(if (isScanning) "Stop Scanning" else "Scan for Devices")
+                    Text(
+                        when {
+                            isScanning -> "Stop Scanning"
+                            !blePermissions.allPermissionsGranted -> "Grant Bluetooth Permission"
+                            else -> "Scan for Devices"
+                        }
+                    )
+                }
+            }
+            if (!blePermissions.allPermissionsGranted && !isScanning) {
+                item {
+                    Text(
+                        "Bluetooth permission is required to scan for nearby devices.",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             if (isScanning) {

@@ -4,32 +4,56 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import ch.rhosys.lyra.data.LogLevel
 
 @Composable
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+    val listenerEnabled by vm.listenerEnabled.collectAsState()
     val listenerConnected by vm.listenerConnected.collectAsState()
+    val batteryOptimizationIgnored by vm.batteryOptimizationIgnored.collectAsState()
+    val logEntries by vm.logEntries.collectAsState()
     val context = LocalContext.current
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    LifecycleResumeEffect(Unit) {
+        vm.refreshStatus()
+        onPauseOrDispose {}
+    }
+
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+    ) {
         Text("Notification Access", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
 
         when {
-            !vm.listenerEnabled -> {
+            !listenerEnabled -> {
                 Surface(
                     color = MaterialTheme.colorScheme.error,
                     shape = RoundedCornerShape(16.dp),
@@ -81,7 +105,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         Text("Battery Optimization", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (!vm.batteryOptimizationIgnored) {
+        if (!batteryOptimizationIgnored) {
             Text(
                 "Battery optimization may kill the service on some devices (Xiaomi, Huawei, OnePlus).",
                 style = MaterialTheme.typography.bodySmall,
@@ -92,6 +116,60 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             ) { Text("Disable Optimization") }
         } else {
             Text("Battery optimization is disabled for this app.", style = MaterialTheme.typography.bodySmall)
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        Text("Logs", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (logEntries.isNotEmpty()) {
+            OutlinedButton(onClick = { vm.clearLogs() }) { Text("Clear") }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp, max = 300.dp),
+        ) {
+            val listState = rememberLazyListState()
+
+            // Auto-scroll to bottom when new entries arrive
+            LaunchedEffect(logEntries.size) {
+                if (logEntries.isNotEmpty()) {
+                    listState.animateScrollToItem(logEntries.lastIndex)
+                }
+            }
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.padding(8.dp),
+            ) {
+                if (logEntries.isEmpty()) {
+                    item {
+                        Text(
+                            "No logs yet.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                items(logEntries, key = { "${it.timestamp}_${it.message.hashCode()}" }) { entry ->
+                    val color = when (entry.level) {
+                        LogLevel.ERROR -> MaterialTheme.colorScheme.error
+                        LogLevel.WARN -> MaterialTheme.colorScheme.tertiary
+                        LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    Text(
+                        text = "${entry.timestamp} ${entry.message}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color,
+                    )
+                }
+            }
         }
     }
 }
