@@ -110,7 +110,7 @@ jobs:
 
       - name: Run BLE integration tests
         working-directory: firmware/device-host
-        run: cargo test --test ble_integration -- --nocapture
+        run: cargo test --test ble_integration -- --nocapture --test-threads=1
 
   # ── Tier 3: Kotlin ↔ Rust protocol round-trip ────────────────────────────────
   # Both sides read the same test-vectors.json. When the protocol changes,
