@@ -75,11 +75,15 @@ class KineticNotificationListenerService : NotificationListenerService() {
             } catch (_: Exception) {
                 sbn.packageName
             }
+
+            val personIconUri = extractPersonIconUri(sbn)
+
             notificationHistoryRepository.record(
                 NotificationHistoryEntry(
                     packageName = sbn.packageName,
                     appLabel = appLabel,
                     senderName = contactName,
+                    personIconUri = personIconUri,
                     postedAt = sbn.postTime,
                 )
             )
@@ -94,6 +98,16 @@ class KineticNotificationListenerService : NotificationListenerService() {
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun extractPersonIconUri(sbn: StatusBarNotification): String? {
+        val notification = sbn.notification
+        val style = NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(notification) ?: return null
+        val person = style.messages.lastOrNull()?.person ?: return null
+        val icon = person.icon ?: return null
+        // IconCompat stores a URI for content:// and file:// icons
+        return try { icon.uri?.toString() } catch (_: Exception) { null }
     }
 
     private fun extractSender(sbn: StatusBarNotification): Pair<String, String?> {

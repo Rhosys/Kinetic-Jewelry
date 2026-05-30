@@ -5,5 +5,6 @@ data class NotificationHistoryEntry(
     val packageName: String,
     val appLabel: String,
     val senderName: String?,
+    val personIconUri: String?,
     val postedAt: Long,
 )
