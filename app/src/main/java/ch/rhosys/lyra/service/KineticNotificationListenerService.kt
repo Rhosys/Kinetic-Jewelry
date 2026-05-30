@@ -5,6 +5,8 @@ import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
 import ch.rhosys.lyra.data.notification.NotificationEventBus
 import ch.rhosys.lyra.domain.model.NotificationEvent
+import ch.rhosys.lyra.domain.model.NotificationHistoryEntry
+import ch.rhosys.lyra.domain.repository.NotificationHistoryRepository
 import ch.rhosys.lyra.domain.usecase.ProcessNotificationUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +21,7 @@ class KineticNotificationListenerService : NotificationListenerService() {
 
     @Inject lateinit var processNotification: ProcessNotificationUseCase
     @Inject lateinit var eventBus: NotificationEventBus
+    @Inject lateinit var notificationHistoryRepository: NotificationHistoryRepository
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -63,6 +66,19 @@ class KineticNotificationListenerService : NotificationListenerService() {
         )
 
         scope.launch {
+            val appLabel = try {
+                packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
+            } catch (_: Exception) {
+                sbn.packageName
+            }
+            notificationHistoryRepository.record(
+                NotificationHistoryEntry(
+                    packageName = sbn.packageName,
+                    appLabel = appLabel,
+                    senderName = contactName,
+                    postedAt = sbn.postTime,
+                )
+            )
             processNotification.execute(
                 packageName = sbn.packageName,
                 groupName = groupName,

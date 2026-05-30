@@ -92,9 +92,9 @@ jobs:
 
       - name: Load virtual HCI kernel module and start BlueZ
         run: |
-          sudo modprobe hci_vhci
-          sudo systemctl start bluetooth
-          sleep 2
+          sudo modprobe hci_vhci || true
+          sudo systemctl start bluetooth || true
+          sleep 5
           sudo hciconfig hci0 up || true
 
       - name: Cache cargo
@@ -110,7 +110,7 @@ jobs:
 
       - name: Run BLE integration tests
         working-directory: firmware/device-host
-        run: cargo test --test ble_integration -- --nocapture
+        run: cargo test --test ble_integration -- --nocapture --test-threads=1
 
   # ── Tier 3: Kotlin ↔ Rust protocol round-trip ────────────────────────────────
   # Both sides read the same test-vectors.json. When the protocol changes,

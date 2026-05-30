@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothManager
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.VibrationPacketBuilder
@@ -42,6 +44,39 @@ class BluetoothControllerImpl @Inject constructor(
 
     private val _connectedDevices = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
     override val connectedDevices: StateFlow<List<BluetoothDeviceInfo>> = _connectedDevices.asStateFlow()
+
+    private val _scanResults = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
+    override val scanResults: StateFlow<List<BluetoothDeviceInfo>> = _scanResults.asStateFlow()
+
+    private val _isScanning = MutableStateFlow(false)
+    override val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+
+    private val scanCallback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+            val device = result.device
+            val info = BluetoothDeviceInfo(
+                address = device.address,
+                name = device.name ?: device.address,
+                isAlertEnabled = false,
+                connectionState = ConnectionState.DISCONNECTED,
+            )
+            val current = _scanResults.value
+            if (current.none { it.address == info.address }) {
+                _scanResults.value = current + info
+            }
+        }
+    }
+
+    override fun startScan() {
+        _scanResults.value = emptyList()
+        _isScanning.value = true
+        bluetoothAdapter.bluetoothLeScanner?.startScan(scanCallback)
+    }
+
+    override fun stopScan() {
+        bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+        _isScanning.value = false
+    }
 
     fun refreshPairedDevices() {
         _pairedDevices.value = bluetoothAdapter.bondedDevices.map { device ->
