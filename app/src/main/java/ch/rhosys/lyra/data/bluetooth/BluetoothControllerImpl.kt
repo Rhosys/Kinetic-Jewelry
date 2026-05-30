@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.VibrationPacketBuilder
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
@@ -14,11 +15,15 @@ import ch.rhosys.lyra.domain.model.ConnectionState
 import ch.rhosys.lyra.domain.model.ProtocolVersion
 import ch.rhosys.lyra.domain.model.VibrationMode
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import java.util.UUID
 import javax.inject.Inject
@@ -28,12 +33,14 @@ private val SERVICE_UUID       = UUID.fromString("6b2f0001-0000-1000-8000-00805f
 private val COMMAND_CHAR_UUID  = UUID.fromString("6b2f0002-0000-1000-8000-00805f9b34fb")
 private val FIRMWARE_CHAR_UUID = UUID.fromString("6b2f0004-0000-1000-8000-00805f9b34fb")
 private const val CONNECT_TIMEOUT_MS = 15_000L
+private const val SCAN_TIMEOUT_MS = 10_000L
 
 @SuppressLint("MissingPermission") // Permissions checked at UI layer before invoking controller
 @Singleton
 class BluetoothControllerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val packetBuilder: VibrationPacketBuilder,
+    private val logger: AppLogger,
 ) : BluetoothController {
 
     private val bluetoothAdapter =
@@ -50,6 +57,9 @@ class BluetoothControllerImpl @Inject constructor(
 
     private val _isScanning = MutableStateFlow(false)
     override val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+
+    private val scope = CoroutineScope(Dispatchers.Main.immediate)
+    private var scanTimeoutJob: Job? = null
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -70,12 +80,22 @@ class BluetoothControllerImpl @Inject constructor(
     override fun startScan() {
         _scanResults.value = emptyList()
         _isScanning.value = true
+        logger.info("BLE scan started")
         bluetoothAdapter.bluetoothLeScanner?.startScan(scanCallback)
+            ?: logger.error("BLE scanner unavailable — is Bluetooth enabled?")
+        scanTimeoutJob?.cancel()
+        scanTimeoutJob = scope.launch {
+            delay(SCAN_TIMEOUT_MS)
+            stopScan()
+        }
     }
 
     override fun stopScan() {
+        scanTimeoutJob?.cancel()
+        scanTimeoutJob = null
         bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
         _isScanning.value = false
+        logger.info("BLE scan stopped (${_scanResults.value.size} device(s) found)")
     }
 
     fun refreshPairedDevices() {
@@ -89,8 +109,9 @@ class BluetoothControllerImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendVibration(address: String, mode: VibrationMode): Result<Unit> =
-        runCatching {
+    override suspend fun sendVibration(address: String, mode: VibrationMode): Result<Unit> {
+        logger.info("Sending vibration ($mode) to $address")
+        return runCatching {
             withTimeout(CONNECT_TIMEOUT_MS) {
                 val events = Channel<GattEvent>(capacity = 16)
                 val callback = BleGattCallback(events)
@@ -132,7 +153,11 @@ class BluetoothControllerImpl @Inject constructor(
                     gatt.close()
                 }
             }
+        }.also { result ->
+            result.onSuccess { logger.info("Vibration sent to $address") }
+            result.onFailure { logger.error("Vibration failed for $address", it) }
         }
+    }
 
     private suspend fun readFirmwareVersion(gatt: BluetoothGatt, events: Channel<GattEvent>): ProtocolVersion {
         val firmwareChar = gatt.getService(SERVICE_UUID)?.getCharacteristic(FIRMWARE_CHAR_UUID)
