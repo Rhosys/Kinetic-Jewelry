@@ -98,7 +98,7 @@ class BluetoothControllerImpl @Inject constructor(
         logger.info("BLE scan stopped (${_scanResults.value.size} device(s) found)")
     }
 
-    fun refreshPairedDevices() {
+    override fun refreshPairedDevices() {
         _pairedDevices.value = bluetoothAdapter.bondedDevices.map { device ->
             BluetoothDeviceInfo(
                 address = device.address,

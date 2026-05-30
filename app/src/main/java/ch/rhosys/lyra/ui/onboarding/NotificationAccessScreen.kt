@@ -3,7 +3,9 @@ package ch.rhosys.lyra.ui.onboarding
 import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,17 +16,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import ch.rhosys.lyra.service.KineticNotificationListenerService
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -44,6 +50,19 @@ fun SetupScreen(notificationAccessGranted: Boolean) {
             }
         }
     )
+
+    var batteryOptIgnored by remember {
+        mutableStateOf(
+            (context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager)
+                .isIgnoringBatteryOptimizations(context.packageName)
+        )
+    }
+
+    LifecycleResumeEffect(Unit) {
+        batteryOptIgnored = (context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager)
+            .isIgnoringBatteryOptimizations(context.packageName)
+        onPauseOrDispose {}
+    }
 
     Column(
         modifier = Modifier
@@ -70,7 +89,16 @@ fun SetupScreen(notificationAccessGranted: Boolean) {
             label = "Notification Access",
             granted = notificationAccessGranted,
             onRequest = {
-                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
+                        putExtra(
+                            Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                            ComponentName(context, KineticNotificationListenerService::class.java).flattenToString(),
+                        )
+                    }
+                } else {
+                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                }
                 context.startActivity(intent)
             },
         )
@@ -83,6 +111,29 @@ fun SetupScreen(notificationAccessGranted: Boolean) {
             granted = blePermissions.allPermissionsGranted,
             onRequest = { blePermissions.launchMultiplePermissionRequest() },
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Battery optimization — only show on aggressive OEM skins
+        val aggressiveOem = remember {
+            Build.MANUFACTURER.lowercase() in setOf(
+                "xiaomi", "redmi", "poco", "huawei", "honor", "oppo", "realme",
+                "vivo", "oneplus", "samsung", "meizu", "asus", "tecno", "infinix",
+            )
+        }
+        if (aggressiveOem) {
+            PermissionRow(
+                label = "Battery Unrestricted",
+                granted = batteryOptIgnored,
+                onRequest = {
+                    @Suppress("BatteryLife")
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                    context.startActivity(intent)
+                },
+            )
+        }
     }
 }
 

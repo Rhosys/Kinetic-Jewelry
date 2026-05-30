@@ -22,6 +22,7 @@ class FakeBluetoothController : BluetoothController {
 
     override fun startScan() { _isScanning.value = true }
     override fun stopScan() { _isScanning.value = false }
+    override fun refreshPairedDevices() {}
 
     val sentCommands = mutableListOf<VibrationCommand>()
 

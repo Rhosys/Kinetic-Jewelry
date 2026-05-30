@@ -52,6 +52,10 @@ class DeviceManagerViewModel @Inject constructor(
     fun startScan() { bluetoothController.startScan() }
     fun stopScan() { bluetoothController.stopScan() }
 
+    init {
+        bluetoothController.refreshPairedDevices()
+    }
+
     fun enableAlert(device: BluetoothDeviceInfo) {
         viewModelScope.launch { deviceRepo.upsert(device.copy(isAlertEnabled = true)) }
     }
