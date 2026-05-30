@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.datastore.preferences)
     implementation(libs.accompanist.permissions)
+    implementation(libs.accompanist.drawablepainter)
 
     debugImplementation(libs.compose.ui.tooling)
 
