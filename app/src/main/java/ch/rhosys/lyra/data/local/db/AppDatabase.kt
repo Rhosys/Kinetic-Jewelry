@@ -16,7 +16,7 @@ import ch.rhosys.lyra.data.local.db.entity.NotificationHistoryEntity
 
 @Database(
     entities = [AppFilterEntity::class, ContactFilterEntity::class, BluetoothDeviceEntity::class, NotificationHistoryEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -37,6 +37,12 @@ abstract class AppDatabase : RoomDatabase() {
                     "`senderName` TEXT, " +
                     "`postedAt` INTEGER NOT NULL)"
                 )
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `notification_history` ADD COLUMN `personIconUri` TEXT")
             }
         }
     }

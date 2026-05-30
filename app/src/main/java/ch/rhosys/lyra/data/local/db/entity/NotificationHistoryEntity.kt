@@ -10,10 +10,11 @@ data class NotificationHistoryEntity(
     val packageName: String,
     val appLabel: String,
     val senderName: String?,
+    val personIconUri: String?,
     val postedAt: Long,
 ) {
-    fun toDomain() = NotificationHistoryEntry(id, packageName, appLabel, senderName, postedAt)
+    fun toDomain() = NotificationHistoryEntry(id, packageName, appLabel, senderName, personIconUri, postedAt)
     companion object {
-        fun fromDomain(e: NotificationHistoryEntry) = NotificationHistoryEntity(e.id, e.packageName, e.appLabel, e.senderName, e.postedAt)
+        fun fromDomain(e: NotificationHistoryEntry) = NotificationHistoryEntity(e.id, e.packageName, e.appLabel, e.senderName, e.personIconUri, e.postedAt)
     }
 }
