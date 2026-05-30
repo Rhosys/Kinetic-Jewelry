@@ -32,6 +32,7 @@ class FakeBluetoothController @Inject constructor() : BluetoothController {
 
     override fun startScan() { _isScanning.value = true }
     override fun stopScan() { _isScanning.value = false }
+    override fun refreshPairedDevices() {}
 
     private val _log = MutableStateFlow<List<VibrationCommand>>(emptyList())
     val log: StateFlow<List<VibrationCommand>> = _log.asStateFlow()

@@ -13,5 +13,6 @@ interface BluetoothController {
     suspend fun sendVibration(address: String, mode: VibrationMode): Result<Unit>
     fun startScan()
     fun stopScan()
+    fun refreshPairedDevices()
     fun releaseResources()
 }
