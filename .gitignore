@@ -15,9 +15,11 @@ local.properties
 # Node
 node_modules/
 
-# Signing keys
+# Signing keys — keep release keys out of the repo
 *.jks
 *.p12
 *.key
 *.mobileprovision
 *.keystore
+# Exception: shared debug keystore is intentionally committed
+!app/debug.keystore
