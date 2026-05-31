@@ -15,6 +15,9 @@ class ContactFilterRepositoryImpl @Inject constructor(
     override fun observeByApp(packageName: String): Flow<List<ContactFilter>> =
         dao.observeByApp(packageName).map { entities -> entities.map { it.toDomain() } }
 
+    override suspend fun getByApp(packageName: String): List<ContactFilter> =
+        dao.getAllByApp(packageName).map { it.toDomain() }
+
     override suspend fun get(packageName: String, groupName: String, contactName: String): ContactFilter? =
         dao.get(packageName, groupName, contactName)?.toDomain()
 

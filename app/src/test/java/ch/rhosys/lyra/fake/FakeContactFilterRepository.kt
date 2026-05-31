@@ -15,6 +15,9 @@ class FakeContactFilterRepository : ContactFilterRepository {
     override fun observeByApp(packageName: String): Flow<List<ContactFilter>> =
         _flow.map { map -> map.values.filter { it.packageName == packageName } }
 
+    override suspend fun getByApp(packageName: String): List<ContactFilter> =
+        store.values.filter { it.packageName == packageName }
+
     override suspend fun get(packageName: String, groupName: String, contactName: String): ContactFilter? =
         store[Key(packageName, groupName, contactName)]
 

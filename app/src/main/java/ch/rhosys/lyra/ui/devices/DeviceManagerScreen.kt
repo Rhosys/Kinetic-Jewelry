@@ -67,7 +67,15 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
     // Auto-start scan once permissions are granted
     LaunchedEffect(blePermissions.allPermissionsGranted) {
         if (blePermissions.allPermissionsGranted && !isScanning) {
+            vm.refreshDevices()
             vm.startScan()
+        }
+    }
+
+    // Also refresh paired devices every time this screen appears
+    LaunchedEffect(Unit) {
+        if (blePermissions.allPermissionsGranted) {
+            vm.refreshDevices()
         }
     }
 

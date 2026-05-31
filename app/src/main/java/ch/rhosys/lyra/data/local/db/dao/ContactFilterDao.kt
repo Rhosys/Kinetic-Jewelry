@@ -11,6 +11,9 @@ interface ContactFilterDao {
     @Query("SELECT * FROM contact_filters WHERE packageName = :packageName ORDER BY contactName ASC")
     fun observeByApp(packageName: String): Flow<List<ContactFilterEntity>>
 
+    @Query("SELECT * FROM contact_filters WHERE packageName = :packageName ORDER BY contactName ASC")
+    suspend fun getAllByApp(packageName: String): List<ContactFilterEntity>
+
     @Query("""
         SELECT * FROM contact_filters
         WHERE packageName = :packageName AND groupName = :groupName AND contactName = :contactName

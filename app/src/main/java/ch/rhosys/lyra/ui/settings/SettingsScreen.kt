@@ -1,6 +1,10 @@
 package ch.rhosys.lyra.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,9 +26,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import ch.rhosys.lyra.data.LogLevel
@@ -120,6 +129,28 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
+        // Runtime permissions status
+        Text("Permissions", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        var notifPermGranted by remember { mutableStateOf(true) }
+        var btPermGranted by remember { mutableStateOf(true) }
+
+        LifecycleResumeEffect(Unit) {
+            notifPermGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            } else true
+            btPermGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+            } else true
+            onPauseOrDispose {}
+        }
+
+        PermissionStatusRow("Push Notifications", notifPermGranted)
+        PermissionStatusRow("Bluetooth", btPermGranted)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
         Text("Logs", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -170,6 +201,26 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PermissionStatusRow(label: String, granted: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Surface(
+            color = if (granted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Text(
+                if (granted) "Granted" else "Not Granted",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+            )
         }
     }
 }
