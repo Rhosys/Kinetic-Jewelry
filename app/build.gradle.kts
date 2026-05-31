@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.accompanist.permissions)
     implementation(libs.accompanist.drawablepainter)
+    implementation(libs.posthog.android)
 
     debugImplementation(libs.compose.ui.tooling)
 

@@ -10,6 +10,7 @@ navigation          = "2.7.7"
 coroutines          = "1.8.1"
 datastore           = "1.1.1"
 accompanist         = "0.34.0"
+posthog             = "3.9.1"
 junit               = "4.13.2"
 coroutines-test     = "1.8.1"
 
@@ -43,6 +44,8 @@ datastore-preferences       = { module = "androidx.datastore:datastore-preferenc
 
 accompanist-permissions     = { module = "com.google.accompanist:accompanist-permissions",   version.ref = "accompanist" }
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist" }
+
+posthog-android             = { module = "com.posthog:posthog-android",                       version.ref = "posthog" }
 
 junit                       = { module = "junit:junit",                                      version.ref = "junit" }
 kotlinx-coroutines-test     = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",   version.ref = "coroutines-test" }
