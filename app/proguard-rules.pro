@@ -3,3 +3,7 @@
 -keepclassmembers class * extends androidx.room.RoomDatabase { *; }
 -keep @com.google.dagger.hilt.android.HiltAndroidApp class *
 -keep @dagger.hilt.android.AndroidEntryPoint class *
+
+# PostHog SDK — uses reflection for serialization
+-keep class com.posthog.** { *; }
+-dontwarn com.posthog.**
