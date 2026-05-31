@@ -11,3 +11,8 @@
 # Accompanist — drawablepainter uses reflection
 -keep class com.google.accompanist.** { *; }
 -dontwarn com.google.accompanist.**
+
+# Lifecycle Compose — LocalLifecycleOwner provider stripped by R8 causes crash
+-keep class androidx.lifecycle.compose.** { *; }
+-keep class androidx.lifecycle.** { *; }
+-dontwarn androidx.lifecycle.**
