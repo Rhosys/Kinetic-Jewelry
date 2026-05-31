@@ -144,6 +144,15 @@ deploy-release:
     - set -eo pipefail
     - npm ci --cache .npm
   script:
+    # Compute version name (same formula as build-release)
+    - |
+      BRANCH="${CI_COMMIT_BRANCH:-main}"
+      BUILD_NUMBER="${CI_PIPELINE_IID:-0}"
+      if [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+)$ ]]; then
+        export VERSION="${BASH_REMATCH[1]}.${BUILD_NUMBER}"
+      else
+        export VERSION="1.0.${BUILD_NUMBER}"
+      fi
     # Exchange GitLab OIDC token for GCP credentials for publishing
     - echo "${GITLAB_OIDC_TOKEN}" > /tmp/gcp-oidc.jwt
     - echo '{"type":"external_account","audience":"//iam.googleapis.com/projects/454629444494/locations/global/workloadIdentityPools/gitlab-oidc/providers/gitlab-com","subject_token_type":"urn:ietf:params:oauth:token-type:id_token","token_url":"https://sts.googleapis.com/v1/token","credential_source":{"file":"/tmp/gcp-oidc.jwt"},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/gitlab-play-store@rhosys-apps.iam.gserviceaccount.com:generateAccessToken"}' > "$GOOGLE_APPLICATION_CREDENTIALS"
