@@ -66,9 +66,22 @@ smoke-test-release:
     - sdkmanager --install "system-images;android-34;google_apis;x86_64" "emulator"
     - echo no | avdmanager create avd --name smoke --package "system-images;android-34;google_apis;x86_64" --device "pixel_6"
     # Start emulator in background (headless, no audio, software rendering)
-    - emulator -avd smoke -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
-    # Wait for boot
-    - adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 2; done'
+    - emulator -avd smoke -no-window -no-audio -no-metrics -gpu swiftshader_indirect -no-boot-anim -partition-size 2048 &
+    - EMULATOR_PID=$!
+    # Wait for boot (fail fast if emulator dies)
+    - |
+      for i in $(seq 1 90); do
+        if ! kill -0 $EMULATOR_PID 2>/dev/null; then
+          echo "ERROR: Emulator process died" && exit 1
+        fi
+        if adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; then
+          echo "Emulator booted" && break
+        fi
+        sleep 2
+      done
+      if ! adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; then
+        echo "ERROR: Emulator boot timed out after 180s" && exit 1
+      fi
     # Install the release APK built by build-release and run the smoke test
     - ./gradlew connectedAndroidTest
   timeout: 10m

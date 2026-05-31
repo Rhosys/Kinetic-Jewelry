@@ -36,6 +36,7 @@ class BleGattCallback(
         events.trySend(GattEvent.CharacteristicWritten(status == BluetoothGatt.GATT_SUCCESS))
     }
 
+    @Deprecated("Required for API < 33 compatibility", ReplaceWith(""))
     @Suppress("DEPRECATION")
     override fun onCharacteristicRead(
         gatt: BluetoothGatt,
