@@ -93,7 +93,17 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: |
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          BUILD_NUMBER="${{ github.run_number }}"
+          if [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+)$ ]]; then
+            VERSION_NAME="${BASH_REMATCH[1]}.${BUILD_NUMBER}"
+          else
+            VERSION_NAME="1.0.${BUILD_NUMBER}"
+          fi
+          ./gradlew assembleDebug \
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="$BUILD_NUMBER"
 
       - name: Set timestamp
         id: ts

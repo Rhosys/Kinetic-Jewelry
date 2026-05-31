@@ -15,8 +15,8 @@ android {
         applicationId = "ch.rhosys.lyra"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = (findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+        versionName = (findProperty("versionName") as? String) ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

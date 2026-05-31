@@ -94,7 +94,16 @@ build-release:
     - STORE_PASSWORD=$(jq -r '.passwordCiphertext' deployment/android-upload-signing.json | base64 --decode | aws kms decrypt --ciphertext-blob fileb:///dev/stdin --region eu-west-1 --output text --query Plaintext | base64 --decode)
     # Build signed release AAB
     - |
+      BRANCH="${CI_COMMIT_BRANCH:-main}"
+      BUILD_NUMBER="${CI_PIPELINE_IID:-0}"
+      if [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+)$ ]]; then
+        VERSION_NAME="${BASH_REMATCH[1]}.${BUILD_NUMBER}"
+      else
+        VERSION_NAME="1.0.${BUILD_NUMBER}"
+      fi
       ./gradlew bundleRelease \
+        -PversionName="$VERSION_NAME" \
+        -PversionCode="$BUILD_NUMBER" \
         -Pandroid.injected.signing.store.file="$CI_PROJECT_DIR/app/android-upload-signing.keystore" \
         -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
         -Pandroid.injected.signing.key.alias="lyra" \
