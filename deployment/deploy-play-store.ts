@@ -190,6 +190,17 @@ async function diagnoseError(err: unknown, client: PublisherClient): Promise<nev
   if (status === 401 || status === 403) {
     process.stderr.write(`Error: Play Store API access denied (HTTP ${status})\n${msg}\n\n`);
 
+    if (msg.includes('iam.serviceAccounts.getAccessToken')) {
+      process.stderr.write(`Root cause: GCP Workload Identity Federation impersonation denied.\n`);
+      process.stderr.write(`The CI runner's GitLab project path is not authorized to impersonate\n`);
+      process.stderr.write(`the Play Store service account.\n\n`);
+      process.stderr.write(`Fix: Update the WIF binding in the shared GCP infrastructure repo.\n`);
+      process.stderr.write(`The binding uses a CEL condition on project_path — verify this project's\n`);
+      process.stderr.write(`GitLab path is covered by the condition expression.\n\n`);
+      process.stderr.write(`After updating, run \`tofu apply\` in the GCP infrastructure root.\n`);
+      process.exit(1);
+    }
+
     const tracks = await fetchTrackReleases(client, PACKAGE_NAME);
     if (tracks !== null) {
       const allReleases = tracks.flatMap((t) => t.releases.map((r) => ({ track: t.track, ...r })));
