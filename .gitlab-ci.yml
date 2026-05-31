@@ -65,8 +65,10 @@ smoke-test-release:
     # Install emulator system image (x86_64 for CI — no KVM needed with -no-accel)
     - sdkmanager --install "system-images;android-34;google_apis;x86_64" "emulator"
     - echo no | avdmanager create avd --name smoke --package "system-images;android-34;google_apis;x86_64" --device "pixel_6"
+    # Reduce userdata partition to fit CI runner disk (default is 7GB, runner has ~4GB free)
+    - echo "disk.dataPartition.size=2G" >> ~/.android/avd/smoke.avd/config.ini
     # Start emulator in background (headless, no audio, software rendering)
-    - emulator -avd smoke -no-window -no-audio -no-metrics -gpu swiftshader_indirect -no-boot-anim -partition-size 2048 &
+    - emulator -avd smoke -no-window -no-audio -no-metrics -gpu swiftshader_indirect -no-boot-anim &
     - EMULATOR_PID=$!
     # Wait for boot (fail fast if emulator dies)
     - |
