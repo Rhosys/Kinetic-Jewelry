@@ -27,6 +27,7 @@ import ch.rhosys.lyra.ui.navigation.AppNavHost
 import ch.rhosys.lyra.ui.navigation.Screen
 import ch.rhosys.lyra.ui.onboarding.SetupScreen
 import ch.rhosys.lyra.ui.onboarding.isNotificationListenerEnabled
+import ch.rhosys.lyra.ui.error.StartupErrorScreen
 import ch.rhosys.lyra.ui.theme.KineticJewelryTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -50,6 +51,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KineticJewelryTheme {
+                // Show startup error if Application.onCreate() caught one
+                val app = application as KineticJewelryApp
+                if (app.startupError != null) {
+                    StartupErrorScreen(app.startupError!!)
+                    return@KineticJewelryTheme
+                }
+
                 if (!hasNotificationAccess) {
                     SetupScreen(notificationAccessGranted = false)
                     return@KineticJewelryTheme

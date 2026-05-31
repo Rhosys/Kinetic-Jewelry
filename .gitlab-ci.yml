@@ -41,6 +41,13 @@ compile:
   script:
     - ./gradlew compileDebugKotlin
 
+compile-release:
+  extends: .gradle-job
+  stage: validate
+  script:
+    # Validates R8/ProGuard doesn't strip required classes
+    - ./gradlew compileReleaseKotlin
+
 lint:
   extends: .gradle-job
   stage: validate
