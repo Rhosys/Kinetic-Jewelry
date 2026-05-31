@@ -23,6 +23,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +48,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
     val contactsByApp by vm.contactsByApp.collectAsState()
     val historyEntries by vm.historyEntries.collectAsState()
     var showUserPicker by remember { mutableStateOf(false) }
+    var showAppPicker by remember { mutableStateOf(false) }
 
     if (showUserPicker) {
         UserPickerDialog(
@@ -56,18 +58,42 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
                 vm.addUser(senderName, packageName, appLabel)
                 showUserPicker = false
             },
+            onSwitchToAppPicker = { showAppPicker = true },
+        )
+    }
+
+    if (showAppPicker) {
+        AppPickerDialog(
+            onDismiss = { showAppPicker = false },
+            onAppSelected = { packageName, label ->
+                vm.addApp(packageName, label)
+                showAppPicker = false
+            },
         )
     }
 
     LazyColumn {
         item {
-            Button(
-                onClick = { showUserPicker = true },
+            Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Add User")
+                Button(
+                    onClick = { showUserPicker = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add User")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = { showAppPicker = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add App")
+                }
             }
         }
 

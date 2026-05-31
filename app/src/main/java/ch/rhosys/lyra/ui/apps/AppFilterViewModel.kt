@@ -56,6 +56,23 @@ class AppFilterViewModel @Inject constructor(
         }
     }
 
+    fun addApp(packageName: String, label: String) {
+        viewModelScope.launch {
+            val existing = appRepo.getByPackageName(packageName)
+            if (existing == null) {
+                appRepo.upsert(
+                    AppFilter(
+                        packageName = packageName,
+                        appLabel = label,
+                        isWatched = true,
+                        vibrationMode = VibrationMode.SHORT_PULSE,
+                        isContactLevelEnabled = false,
+                    )
+                )
+            }
+        }
+    }
+
     fun addUser(senderName: String, packageName: String, appLabel: String) {
         viewModelScope.launch {
             // Ensure app exists with contact-level enabled

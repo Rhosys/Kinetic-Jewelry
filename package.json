@@ -3,9 +3,11 @@
   "scripts": {
     "prepare": "husky",
     "test": "jest",
-    "deploy:play-store": "tsx deployment/deploy-play-store.ts"
+    "deploy:play-store": "tsx deployment/deploy-play-store.ts",
+    "deploy:notify": "tsx deployment/notify-deploy.ts"
   },
   "devDependencies": {
+    "@aws-sdk/client-sesv2": "^3.1005.0",
     "@googleapis/androidpublisher": "^22.0.0",
     "@types/jest": "^29.5.14",
     "google-auth-library": "^9.0.0",

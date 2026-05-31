@@ -40,6 +40,9 @@ android {
         }
     }
 
+    // Run instrumented tests against release to catch R8 stripping issues
+    testBuildType = "release"
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -95,6 +98,12 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.room.testing)
     testImplementation("org.json:json:20240303")
+
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 // Pass the canonical test-vectors path to JVM unit tests so ProtocolRoundtripTest

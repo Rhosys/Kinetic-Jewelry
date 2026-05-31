@@ -1,15 +1,16 @@
 package ch.rhosys.lyra.ui.apps
 
 import android.content.Intent
-import android.content.pm.ResolveInfo
+import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,9 +33,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
-data class InstalledApp(
+data class InstalledAppInfo(
     val packageName: String,
     val label: String,
     val icon: Drawable?,
@@ -46,12 +48,16 @@ fun AppPickerDialog(
     onAppSelected: (packageName: String, label: String) -> Unit,
 ) {
     val context = LocalContext.current
+
     val installedApps = remember {
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         pm.queryIntentActivities(intent, 0)
-            .map { ri: ResolveInfo ->
-                InstalledApp(
+            .filter { ri ->
+                (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+            }
+            .map { ri ->
+                InstalledAppInfo(
                     packageName = ri.activityInfo.packageName,
                     label = ri.loadLabel(pm).toString(),
                     icon = try { pm.getApplicationIcon(ri.activityInfo.packageName) } catch (_: Exception) { null },
@@ -70,39 +76,55 @@ fun AppPickerDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Surface(
             shape = MaterialTheme.shapes.large,
             tonalElevation = 6.dp,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Select App", style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    "Watch All Notifications",
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Select an app to receive vibration alerts for all notifications from it.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search…") },
+                    placeholder = { Text("Search apps…") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                LazyColumn {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(filtered, key = { it.packageName }) { app ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onAppSelected(app.packageName, app.label) }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 12.dp),
                         ) {
                             if (app.icon != null) {
                                 Image(
                                     painter = rememberDrawablePainter(app.icon),
                                     contentDescription = app.label,
-                                    modifier = Modifier.size(32.dp).clip(CircleShape),
+                                    modifier = Modifier.size(36.dp).clip(CircleShape),
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                             }
-                            Text(app.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(app.label, style = MaterialTheme.typography.bodyLarge)
                         }
                         HorizontalDivider()
                     }
