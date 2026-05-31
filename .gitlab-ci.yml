@@ -81,11 +81,13 @@ build-release:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
       when: manual
   script:
+    - set -eo pipefail
     # Write OIDC token for AWS web identity (authenticates with KMS for signing)
     - echo "${GITLAB_OIDC_TOKEN}" > "${AWS_WEB_IDENTITY_TOKEN_FILE}"
     # Install AWS CLI to decrypt the signing password via KMS
     - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin
+    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install --install-dir "$HOME/.local/aws-cli" --bin-dir "$HOME/.local/bin"
+    - export PATH="$HOME/.local/bin:$PATH"
     # Decode PKCS12 keystore from the signing JSON
     - jq -r '.keystore' deployment/android-upload-signing.json | base64 --decode > app/android-upload-signing.keystore
     # Decrypt signing password via KMS
