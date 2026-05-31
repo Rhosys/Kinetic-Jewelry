@@ -7,3 +7,7 @@
 # PostHog SDK — uses reflection for serialization
 -keep class com.posthog.** { *; }
 -dontwarn com.posthog.**
+
+# Accompanist — drawablepainter uses reflection
+-keep class com.google.accompanist.** { *; }
+-dontwarn com.google.accompanist.**
