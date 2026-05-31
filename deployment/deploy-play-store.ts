@@ -194,10 +194,24 @@ async function diagnoseError(err: unknown, client: PublisherClient): Promise<nev
       process.stderr.write(`Root cause: GCP Workload Identity Federation impersonation denied.\n`);
       process.stderr.write(`The CI runner's GitLab project path is not authorized to impersonate\n`);
       process.stderr.write(`the Play Store service account.\n\n`);
-      process.stderr.write(`Fix: Update the WIF binding in the shared GCP infrastructure repo.\n`);
-      process.stderr.write(`The binding uses a CEL condition on project_path — verify this project's\n`);
-      process.stderr.write(`GitLab path is covered by the condition expression.\n\n`);
-      process.stderr.write(`After updating, run \`tofu apply\` in the GCP infrastructure root.\n`);
+      process.stderr.write(`Fix: Add an explicit WIF binding in the shared GCP infrastructure repo's gcp/main.tf:\n\n`);
+      process.stderr.write(`  resource "google_service_account_iam_member" "play_store_wif_<appname>" {\n`);
+      process.stderr.write(`    service_account_id = google_service_account.play_store.name\n`);
+      process.stderr.write(`    role               = "roles/iam.workloadIdentityUser"\n`);
+      process.stderr.write(`    member             = "principalSet://iam.googleapis.com/\${pool}/attribute.project_path/<gitlab-group>/<project>"\n`);
+      process.stderr.write(`  }\n\n`);
+      process.stderr.write(`Note: CEL conditions and wildcards do NOT work for SA impersonation.\n`);
+      process.stderr.write(`Each app must have an explicit principalSet binding with the full attribute path.\n`);
+      process.stderr.write(`After adding, run \`tofu apply\` in the GCP infrastructure root.\n`);
+      process.exit(1);
+    }
+
+    if (msg.includes('does not have permission') || msg.includes('forbidden')) {
+      process.stderr.write(`Root cause: Play Console has not granted this app to the service account.\n\n`);
+      process.stderr.write(`Fix: Go to Play Console → Users and permissions → select the service account\n`);
+      process.stderr.write(`→ add this app to the account's app list with default permissions.\n\n`);
+      process.stderr.write(`The service account exists and WIF works, but the specific app\n`);
+      process.stderr.write(`hasn't been added to its permitted apps in Play Console.\n`);
       process.exit(1);
     }
 
