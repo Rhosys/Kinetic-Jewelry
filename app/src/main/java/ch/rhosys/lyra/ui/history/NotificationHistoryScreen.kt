@@ -38,7 +38,16 @@ import java.util.Date
 fun NotificationHistoryScreen(vm: NotificationHistoryViewModel = hiltViewModel()) {
     val entries by vm.entries.collectAsState()
 
-    if (entries.isEmpty()) {
+    // Deduplicate: keep only the latest entry per (packageName, senderName)
+    val deduped = remember(entries) {
+        entries
+            .groupBy { "${it.packageName}:${it.senderName ?: ""}" }
+            .values
+            .mapNotNull { group -> group.maxByOrNull { it.postedAt } }
+            .sortedByDescending { it.postedAt }
+    }
+
+    if (deduped.isEmpty()) {
         Text(
             "No notifications in the last 7 days",
             modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -47,11 +56,10 @@ fun NotificationHistoryScreen(vm: NotificationHistoryViewModel = hiltViewModel()
         )
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(entries, key = { it.id }) { entry ->
+            items(deduped, key = { "${it.packageName}:${it.senderName}" }) { entry ->
                 HistoryRow(
                     entry = entry,
-                    onWatchApp = { vm.watchApp(entry) },
-                    onWatchUser = { vm.watchUser(entry) },
+                    onAdd = { vm.watchUser(entry) },
                 )
                 HorizontalDivider()
             }
@@ -62,8 +70,7 @@ fun NotificationHistoryScreen(vm: NotificationHistoryViewModel = hiltViewModel()
 @Composable
 private fun HistoryRow(
     entry: NotificationHistoryEntry,
-    onWatchApp: () -> Unit,
-    onWatchUser: () -> Unit,
+    onAdd: () -> Unit,
 ) {
     val context = LocalContext.current
     val appIcon: Drawable? = remember(entry.packageName) {
@@ -104,16 +111,8 @@ private fun HistoryRow(
             Text(timeStr, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // Action buttons
-        Column(horizontalAlignment = Alignment.End) {
-            OutlinedButton(onClick = onWatchApp, modifier = Modifier.padding(bottom = 2.dp)) {
-                Text("+ App", style = MaterialTheme.typography.labelSmall)
-            }
-            if (!entry.senderName.isNullOrBlank()) {
-                OutlinedButton(onClick = onWatchUser) {
-                    Text("+ User", style = MaterialTheme.typography.labelSmall)
-                }
-            }
+        OutlinedButton(onClick = onAdd) {
+            Text("+ Add", style = MaterialTheme.typography.labelSmall)
         }
     }
 }

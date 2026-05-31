@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ContactFilterRepository {
     fun observeByApp(packageName: String): Flow<List<ContactFilter>>
+    suspend fun getByApp(packageName: String): List<ContactFilter>
     suspend fun get(packageName: String, groupName: String, contactName: String): ContactFilter?
     suspend fun upsert(filter: ContactFilter)
     suspend fun delete(packageName: String, groupName: String, contactName: String)

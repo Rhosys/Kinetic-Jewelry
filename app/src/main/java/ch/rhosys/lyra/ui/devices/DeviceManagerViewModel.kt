@@ -56,6 +56,11 @@ class DeviceManagerViewModel @Inject constructor(
         bluetoothController.refreshPairedDevices()
     }
 
+    /** Call after BLE permissions are granted to reload bonded devices. */
+    fun refreshDevices() {
+        bluetoothController.refreshPairedDevices()
+    }
+
     fun enableAlert(device: BluetoothDeviceInfo) {
         viewModelScope.launch { deviceRepo.upsert(device.copy(isAlertEnabled = true)) }
     }

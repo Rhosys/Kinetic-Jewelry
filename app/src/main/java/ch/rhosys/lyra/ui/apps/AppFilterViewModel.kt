@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,37 +32,26 @@ class AppFilterViewModel @Inject constructor(
     val historyEntries: StateFlow<List<NotificationHistoryEntry>> = historyRepo.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _contactsByApp = MutableStateFlow<Map<String, List<ContactFilter>>>(emptyMap())
+    val contactsByApp: StateFlow<Map<String, List<ContactFilter>>> = _contactsByApp.asStateFlow()
+
+    // Remove accordion state — no longer needed
     private val _expandedPackage = MutableStateFlow<String?>(null)
     val expandedPackage: StateFlow<String?> = _expandedPackage.asStateFlow()
 
     private val _contacts = MutableStateFlow<List<ContactFilter>>(emptyList())
     val contacts: StateFlow<List<ContactFilter>> = _contacts.asStateFlow()
 
-    fun toggleExpanded(packageName: String) {
-        val current = _expandedPackage.value
-        if (current == packageName) {
-            _expandedPackage.value = null
-        } else {
-            _expandedPackage.value = packageName
-            viewModelScope.launch {
-                contactRepo.observeByApp(packageName).collect { _contacts.value = it }
-            }
-        }
-    }
-
-    fun addApp(packageName: String, label: String) {
+    init {
+        // Load contacts for all watched apps
         viewModelScope.launch {
-            val existing = appRepo.getByPackageName(packageName)
-            if (existing == null) {
-                appRepo.upsert(
-                    AppFilter(
-                        packageName = packageName,
-                        appLabel = label,
-                        isWatched = true,
-                        vibrationMode = VibrationMode.SHORT_PULSE,
-                        isContactLevelEnabled = false,
-                    )
-                )
+            apps.collectLatest { appList ->
+                val map = mutableMapOf<String, List<ContactFilter>>()
+                for (app in appList) {
+                    val contacts = contactRepo.getByApp(app.packageName)
+                    map[app.packageName] = contacts
+                }
+                _contactsByApp.value = map
             }
         }
     }
@@ -97,15 +87,14 @@ class AppFilterViewModel @Inject constructor(
                     )
                 )
             }
+            // Refresh contacts map
+            refreshContacts(packageName)
         }
     }
 
     fun removeApp(packageName: String) {
         viewModelScope.launch {
             appRepo.delete(packageName)
-            if (_expandedPackage.value == packageName) {
-                _expandedPackage.value = null
-            }
         }
     }
 
@@ -114,6 +103,14 @@ class AppFilterViewModel @Inject constructor(
     }
 
     fun setContactWatched(contact: ContactFilter, watched: Boolean) {
-        viewModelScope.launch { contactRepo.upsert(contact.copy(isWatched = watched)) }
+        viewModelScope.launch {
+            contactRepo.upsert(contact.copy(isWatched = watched))
+            refreshContacts(contact.packageName)
+        }
+    }
+
+    private suspend fun refreshContacts(packageName: String) {
+        val contacts = contactRepo.getByApp(packageName)
+        _contactsByApp.value = _contactsByApp.value.toMutableMap().apply { put(packageName, contacts) }
     }
 }

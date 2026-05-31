@@ -26,27 +26,10 @@ class NotificationHistoryViewModel @Inject constructor(
     val entries: StateFlow<List<NotificationHistoryEntry>> = repo.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun watchApp(entry: NotificationHistoryEntry) {
-        viewModelScope.launch {
-            val existing = appFilterRepo.getByPackageName(entry.packageName)
-            if (existing == null) {
-                appFilterRepo.upsert(
-                    AppFilter(
-                        packageName = entry.packageName,
-                        appLabel = entry.appLabel,
-                        isWatched = true,
-                        vibrationMode = VibrationMode.SHORT_PULSE,
-                        isContactLevelEnabled = false,
-                    )
-                )
-            }
-        }
-    }
-
     fun watchUser(entry: NotificationHistoryEntry) {
-        val senderName = entry.senderName ?: return
+        val senderName = entry.senderName
         viewModelScope.launch {
-            // Ensure app is in the watch list with contact-level enabled
+            // Ensure app is in the watch list
             val existing = appFilterRepo.getByPackageName(entry.packageName)
             if (existing == null) {
                 appFilterRepo.upsert(
@@ -55,25 +38,27 @@ class NotificationHistoryViewModel @Inject constructor(
                         appLabel = entry.appLabel,
                         isWatched = true,
                         vibrationMode = VibrationMode.SHORT_PULSE,
-                        isContactLevelEnabled = true,
+                        isContactLevelEnabled = !senderName.isNullOrBlank(),
                     )
                 )
-            } else if (!existing.isContactLevelEnabled) {
+            } else if (!senderName.isNullOrBlank() && !existing.isContactLevelEnabled) {
                 appFilterRepo.upsert(existing.copy(isContactLevelEnabled = true))
             }
 
-            // Add the contact as watched
-            val existingContact = contactFilterRepo.get(entry.packageName, "", senderName)
-            if (existingContact == null) {
-                contactFilterRepo.upsert(
-                    ContactFilter(
-                        packageName = entry.packageName,
-                        groupName = "",
-                        contactName = senderName,
-                        isWatched = true,
-                        vibrationMode = null,
+            // Add the contact as watched (if there's a sender name)
+            if (!senderName.isNullOrBlank()) {
+                val existingContact = contactFilterRepo.get(entry.packageName, "", senderName)
+                if (existingContact == null) {
+                    contactFilterRepo.upsert(
+                        ContactFilter(
+                            packageName = entry.packageName,
+                            groupName = "",
+                            contactName = senderName,
+                            isWatched = true,
+                            vibrationMode = null,
+                        )
                     )
-                )
+                }
             }
         }
     }
