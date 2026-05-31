@@ -140,6 +140,20 @@ release:
         - .npm/
   timeout: 15m
 
+# ── Sync from GitHub (scheduled only) ────────────────────────────────────────
+
+sync-from-github:
+  image: alpine/git:latest
+  stage: validate
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - git remote add github https://github.com/Rhosys/Kinetic-Jewelry.git
+    - git fetch github main
+    - git checkout -B sync/github github/main
+    - git remote set-url --push origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+    - git push origin sync/github --force -o merge_request.create -o merge_request.target=main -o merge_request.title="Sync from GitHub"
+
 # ── Debug APK (manual, MRs only) ─────────────────────────────────────────────
 
 pr-debug-build:
