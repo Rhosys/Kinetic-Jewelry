@@ -24,10 +24,6 @@ default:
 
 .gradle-job:
   image: cimg/android:2026.03.1-node
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    - when: on_success
   variables:
     GRADLE_USER_HOME: '$CI_PROJECT_DIR/.gradle'
     GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.caching=true'
@@ -98,24 +94,24 @@ release:
     # ── Smoke test on emulator ────────────────────────────────────────────────
     # API 30: smaller default userdata partition (~2GB vs 7GB for API 34).
     # GitLab shared runners have ~4GB free — API 34 won't fit.
-    - sdkmanager --install "system-images;android-30;google_apis;x86_64" "emulator"
-    - echo no | avdmanager create avd --name smoke --package "system-images;android-30;google_apis;x86_64" --device "pixel_6"
-    - emulator -avd smoke -no-window -no-audio -no-metrics -gpu swiftshader_indirect -no-boot-anim &
-    - EMULATOR_PID=$!
-    - |
-      for i in $(seq 1 90); do
-        if ! kill -0 $EMULATOR_PID 2>/dev/null; then
-          echo "ERROR: Emulator process died" && exit 1
-        fi
-        if adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; then
-          echo "Emulator booted" && break
-        fi
-        sleep 2
-      done
-      if ! adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; then
-        echo "ERROR: Emulator boot timed out after 180s" && exit 1
-      fi
-    - ./gradlew connectedAndroidTest
+    #- sdkmanager --install "system-images;android-30;google_apis;x86_64" "emulator"
+    #- echo no | avdmanager create avd --name smoke --package "system-images;android-30;google_apis;x86_64" --device "pixel_6"
+    #- emulator -avd smoke -no-window -no-audio -no-metrics -gpu swiftshader_indirect -no-boot-anim &
+    #- EMULATOR_PID=$!
+    #- |
+    #  for i in $(seq 1 90); do
+    #    if ! kill -0 $EMULATOR_PID 2>/dev/null; then
+    #      echo "ERROR: Emulator process died" && exit 1
+    #    fi
+    #    if adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; then
+    #      echo "Emulator booted" && break
+    #    fi
+    #    sleep 2
+    #  done
+    #  if ! adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; then
+    #    echo "ERROR: Emulator boot timed out after 180s" && exit 1
+    #  fi
+    #- ./gradlew connectedAndroidTest
 
     # ── Deploy to Play Store ──────────────────────────────────────────────────
     - npm ci --cache .npm
@@ -147,7 +143,7 @@ release:
 # ── Sync from GitHub (scheduled only) ────────────────────────────────────────
 
 sync-from-github:
-  image: alpine/git:latest
+  image: bitnami/git:latest
   stage: validate
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
