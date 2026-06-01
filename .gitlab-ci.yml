@@ -24,6 +24,10 @@ default:
 
 .gradle-job:
   image: cimg/android:2026.03.1-node
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
   variables:
     GRADLE_USER_HOME: '$CI_PROJECT_DIR/.gradle'
     GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.caching=true'
