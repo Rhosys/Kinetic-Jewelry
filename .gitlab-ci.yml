@@ -114,6 +114,7 @@ release:
     #- ./gradlew connectedAndroidTest
 
     # ── Deploy to Play Store ──────────────────────────────────────────────────
+    - source "$NVM_DIR/nvm.sh"
     - npm ci --cache .npm
     - echo "${GITLAB_OIDC_TOKEN}" > /tmp/gcp-oidc.jwt
     - echo '{"type":"external_account","audience":"//iam.googleapis.com/projects/454629444494/locations/global/workloadIdentityPools/gitlab-oidc/providers/gitlab-com","subject_token_type":"urn:ietf:params:oauth:token-type:id_token","token_url":"https://sts.googleapis.com/v1/token","credential_source":{"file":"/tmp/gcp-oidc.jwt"},"service_account_impersonation_url":"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/gitlab-play-store@rhosys-apps.iam.gserviceaccount.com:generateAccessToken"}' > "$GOOGLE_APPLICATION_CREDENTIALS"
