@@ -120,9 +120,7 @@ release:
     - npm run deploy:play-store
 
     # ── Notify ────────────────────────────────────────────────────────────────
-    - |
-      PACKAGE_NAME=$(grep 'applicationId' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-      npm run deploy:notify -- --package-name "$PACKAGE_NAME" --version-code "$BUILD_NUMBER" --version-name "$VERSION"
+    - npm run deploy:notify -- --version-code "$BUILD_NUMBER" --version-name "$VERSION"
   artifacts:
     when: always
     expose_as: 'Android Release AAB'
