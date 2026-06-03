@@ -3,13 +3,13 @@
  * notify-deploy — sends a deployment notification email via SES.
  *
  * Usage:
- *   notify-deploy --package-name <id> --version-code <code> --version-name <name>
+ *   notify-deploy --version-code <code> --version-name <name>
  *
- * Reads PACKAGE_NAME from the deploy-play-store module if not provided.
  * AWS credentials come from the environment (OIDC web identity in CI).
  */
 
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
+import { PACKAGE_NAME } from './deploy-play-store';
 
 const FROM_ADDRESS = 'gitlab-runner@rhosys.cloud';
 const TO_ADDRESS = 'developers@rhosys.ch';
@@ -46,27 +46,26 @@ export async function notifyDeploy(
   deps.print(`✓ Notification sent.`);
 }
 
-function parseArgs(args: string[]): { packageName: string; versionCode: string; versionName: string } {
-  let packageName = '';
+function parseArgs(args: string[]): { versionCode: string; versionName: string } {
   let versionCode = '';
   let versionName = '';
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--package-name' && args[i + 1]) packageName = args[++i]!;
-    else if (args[i] === '--version-code' && args[i + 1]) versionCode = args[++i]!;
+    if (args[i] === '--version-code' && args[i + 1]) versionCode = args[++i]!;
     else if (args[i] === '--version-name' && args[i + 1]) versionName = args[++i]!;
   }
 
-  if (!packageName || !versionCode || !versionName) {
-    process.stderr.write('Usage: notify-deploy --package-name <id> --version-code <code> --version-name <name>\n');
+  if (!versionCode || !versionName) {
+    process.stderr.write('Usage: notify-deploy --version-code <code> --version-name <name>\n');
     process.exit(1);
   }
 
-  return { packageName, versionCode, versionName };
+  return { versionCode, versionName };
 }
 
 async function main(): Promise<void> {
-  const { packageName, versionCode, versionName } = parseArgs(process.argv.slice(2));
+  const { versionCode, versionName } = parseArgs(process.argv.slice(2));
+  const packageName = PACKAGE_NAME;
 
   const ses = new SESv2Client({ region: REGION });
 
