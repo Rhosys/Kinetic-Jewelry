@@ -2,11 +2,14 @@ package ch.rhosys.lyra.ui.apps
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,7 +26,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.AppFilter
@@ -74,56 +77,94 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
         )
     }
 
-    LazyColumn {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Button(
-                    onClick = { showUserPicker = true },
-                    modifier = Modifier.weight(1f),
+    val context = LocalContext.current
+    val appName = remember { context.applicationInfo.loadLabel(context.packageManager).toString() }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = appName,
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+        )
+
+        Text(
+            text = "Current Watched Notifiers",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp),
+        )
+
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            if (apps.isEmpty()) {
+                item {
+                    Text(
+                        "No apps being watched. Tap Add below to start.",
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            items(apps, key = { it.packageName }) { app ->
+                val contacts = contactsByApp[app.packageName] ?: emptyList()
+                Card(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
+                    AppSection(
+                        app = app,
+                        contacts = contacts,
+                        onContactLevelChange = { vm.setContactLevelEnabled(app, it) },
+                        onContactWatchedChange = { contact, watched -> vm.setContactWatched(contact, watched) },
+                        onVibrationModeChange = { vm.setAppVibrationMode(app.packageName, it) },
+                        onContactVibrationModeChange = { contact, mode -> vm.setContactVibrationMode(contact, mode) },
+                        onRemove = { vm.removeApp(app.packageName) },
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(
+                onClick = { showUserPicker = true },
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .height(88.dp),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text("Add User")
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = { showAppPicker = true },
-                    modifier = Modifier.weight(1f),
-                ) {
+            }
+            Button(
+                onClick = { showAppPicker = true },
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .height(88.dp),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text("Add App")
                 }
-            }
-        }
-
-        if (apps.isEmpty()) {
-            item {
-                Text(
-                    "No apps being watched. Tap \"+ Add\" in the History tab to start.",
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        items(apps, key = { it.packageName }) { app ->
-            val contacts = contactsByApp[app.packageName] ?: emptyList()
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-            ) {
-                AppSection(
-                    app = app,
-                    contacts = contacts,
-                    onContactLevelChange = { vm.setContactLevelEnabled(app, it) },
-                    onContactWatchedChange = { contact, watched -> vm.setContactWatched(contact, watched) },
-                    onVibrationModeChange = { vm.setAppVibrationMode(app.packageName, it) },
-                    onContactVibrationModeChange = { contact, mode -> vm.setContactVibrationMode(contact, mode) },
-                    onRemove = { vm.removeApp(app.packageName) },
-                )
             }
         }
     }

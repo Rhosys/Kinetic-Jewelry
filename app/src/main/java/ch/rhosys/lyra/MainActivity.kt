@@ -1,5 +1,9 @@
+@file:OptIn(com.google.accompanist.permissions.ExperimentalPermissionsApi::class)
+
 package ch.rhosys.lyra
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,6 +33,7 @@ import ch.rhosys.lyra.ui.navigation.Screen
 import ch.rhosys.lyra.ui.onboarding.SetupScreen
 import ch.rhosys.lyra.ui.onboarding.isNotificationListenerEnabled
 import ch.rhosys.lyra.ui.theme.KineticJewelryTheme
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -57,8 +62,17 @@ class MainActivity : ComponentActivity() {
                     return@KineticJewelryTheme
                 }
 
-                if (!hasNotificationAccess) {
-                    SetupScreen(notificationAccessGranted = false)
+                val blePermissions =
+                    rememberMultiplePermissionsState(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+                        } else {
+                            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+                        },
+                    )
+
+                if (!hasNotificationAccess || !blePermissions.allPermissionsGranted) {
+                    SetupScreen(notificationAccessGranted = hasNotificationAccess)
                     return@KineticJewelryTheme
                 }
 

@@ -8,7 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,32 +49,41 @@ fun AppPickerDialog(
 ) {
     val context = LocalContext.current
 
-    val installedApps = remember {
-        val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        pm.queryIntentActivities(intent, 0)
-            .filter { ri ->
-                (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-            }
-            .map { ri ->
-                InstalledAppInfo(
-                    packageName = ri.activityInfo.packageName,
-                    label = ri.loadLabel(pm).toString(),
-                    icon = try { pm.getApplicationIcon(ri.activityInfo.packageName) } catch (_: Exception) { null },
-                )
-            }
-            .distinctBy { it.packageName }
-            .sortedBy { it.label.lowercase() }
-    }
+    val installedApps =
+        remember {
+            val pm = context.packageManager
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            pm
+                .queryIntentActivities(intent, 0)
+                .filter { ri ->
+                    (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                }.map { ri ->
+                    InstalledAppInfo(
+                        packageName = ri.activityInfo.packageName,
+                        label = ri.loadLabel(pm).toString(),
+                        icon =
+                            try {
+                                pm.getApplicationIcon(ri.activityInfo.packageName)
+                            } catch (_: Exception) {
+                                null
+                            },
+                    )
+                }.distinctBy { it.packageName }
+                .sortedBy { it.label.lowercase() }
+        }
 
     var searchQuery by remember { mutableStateOf("") }
-    val filtered = remember(searchQuery) {
-        if (searchQuery.isBlank()) installedApps
-        else installedApps.filter {
-            it.label.contains(searchQuery, ignoreCase = true) ||
-                it.packageName.contains(searchQuery, ignoreCase = true)
+    val filtered =
+        remember(searchQuery) {
+            if (searchQuery.isBlank()) {
+                installedApps
+            } else {
+                installedApps.filter {
+                    it.label.contains(searchQuery, ignoreCase = true) ||
+                        it.packageName.contains(searchQuery, ignoreCase = true)
+                }
+            }
         }
-    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -83,9 +92,10 @@ fun AppPickerDialog(
         Surface(
             shape = MaterialTheme.shapes.large,
             tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.92f)
+                    .fillMaxHeight(0.8f),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
@@ -111,10 +121,11 @@ fun AppPickerDialog(
                     items(filtered, key = { it.packageName }) { app ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onAppSelected(app.packageName, app.label) }
-                                .padding(vertical = 12.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onAppSelected(app.packageName, app.label) }
+                                    .padding(vertical = 12.dp),
                         ) {
                             if (app.icon != null) {
                                 Image(

@@ -35,6 +35,7 @@ class KineticJewelryApp : Application() {
             ).apply {
                 captureApplicationLifecycleEvents = true
                 captureDeepLinks = true
+                // TODO: re-enable after PostHog fixes LocalLifecycleOwner crash in session replay
                 // sessionReplay = true
             }
         PostHogAndroid.setup(this, config)
