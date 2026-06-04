@@ -13,6 +13,8 @@ accompanist         = "0.34.0"
 posthog             = "3.9.1"
 junit               = "4.13.2"
 coroutines-test     = "1.8.1"
+robolectric         = "4.14.1"
+androidx-test-ext   = "1.2.1"
 
 [libraries]
 androidx-core-ktx           = { module = "androidx.core:core-ktx",                          version = "1.13.1" }
@@ -50,6 +52,9 @@ posthog-android             = { module = "com.posthog:posthog-android",         
 junit                       = { module = "junit:junit",                                      version.ref = "junit" }
 kotlinx-coroutines-test     = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",   version.ref = "coroutines-test" }
 room-testing                = { module = "androidx.room:room-testing",                       version.ref = "room" }
+robolectric                 = { module = "org.robolectric:robolectric",                      version.ref = "robolectric" }
+androidx-test-ext-junit     = { module = "androidx.test.ext:junit-ktx",                     version.ref = "androidx-test-ext" }
+hilt-android-testing        = { module = "com.google.dagger:hilt-android-testing",           version.ref = "hilt" }
 
 [plugins]
 android-application = { id = "com.android.application",             version.ref = "agp" }

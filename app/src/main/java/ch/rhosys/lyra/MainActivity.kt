@@ -23,18 +23,17 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import ch.rhosys.lyra.ui.error.StartupErrorScreen
 import ch.rhosys.lyra.ui.navigation.AppNavHost
 import ch.rhosys.lyra.ui.navigation.Screen
 import ch.rhosys.lyra.ui.onboarding.SetupScreen
 import ch.rhosys.lyra.ui.onboarding.isNotificationListenerEnabled
-import ch.rhosys.lyra.ui.error.StartupErrorScreen
 import ch.rhosys.lyra.ui.theme.KineticJewelryTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     private var hasNotificationAccess by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,9 +51,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             KineticJewelryTheme {
                 // Show startup error if Application.onCreate() caught one
-                val app = application as KineticJewelryApp
-                if (app.startupError != null) {
-                    StartupErrorScreen(app.startupError!!)
+                val startupError = (application as? KineticJewelryApp)?.startupError
+                if (startupError != null) {
+                    StartupErrorScreen(startupError)
                     return@KineticJewelryTheme
                 }
 
@@ -67,12 +66,13 @@ class MainActivity : ComponentActivity() {
                 val backStack by navController.currentBackStackEntryAsState()
                 val currentRoute = backStack?.destination?.route
 
-                val tabs = listOf(
-                    Triple(Screen.Apps,     "Apps",     Icons.Default.Notifications),
-                    Triple(Screen.Devices,  "Devices",  Icons.Default.Star),
-                    Triple(Screen.History,  "History",  Icons.Default.Refresh),
-                    Triple(Screen.Settings, "Settings", Icons.Default.Settings),
-                )
+                val tabs =
+                    listOf(
+                        Triple(Screen.Apps, "Apps", Icons.Default.Notifications),
+                        Triple(Screen.Devices, "Devices", Icons.Default.Star),
+                        Triple(Screen.History, "History", Icons.Default.Refresh),
+                        Triple(Screen.Settings, "Settings", Icons.Default.Settings),
+                    )
 
                 Scaffold(
                     bottomBar = {
@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                    }
+                    },
                 ) { innerPadding ->
                     AppNavHost(navController, modifier = Modifier.padding(innerPadding))
                 }
