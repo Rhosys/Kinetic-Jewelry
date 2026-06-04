@@ -133,17 +133,17 @@ Convert the Kinetic-Jewelry Android app from its current `com.rhosys.kineticjewe
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9_
 
   - [x] 9.2 Create `scripts/emulator-create.sh`
-    - Copy from cycle-tracker, change `AVD_NAME` to `LyraAVD`
+    - Copy from cycle-tracker, change `AVD_NAME` to `WorkspaceAVD`
     - Change system image to `system-images;android-35;google_apis;x86_64`
     - _Requirements: 13.1, 13.2, 13.3, 13.7_
 
   - [x] 9.3 Create `scripts/emulator-start.sh`
-    - Start `LyraAVD` in foreground with `-no-snapshot-load`
+    - Start `WorkspaceAVD` in foreground with `-no-snapshot-load`
     - Error if AVD doesn't exist, directing user to `scripts/emulator-create.sh`
     - _Requirements: 13.4, 13.5, 13.7_
 
   - [x] 9.4 Create `scripts/emulator-delete.sh`
-    - Copy from cycle-tracker, change `AVD_NAME` to `LyraAVD`
+    - Copy from cycle-tracker, change `AVD_NAME` to `WorkspaceAVD`
     - _Requirements: 13.6, 13.7_
 
   - [x] 9.5 Create `scripts/check.sh` — unified check command

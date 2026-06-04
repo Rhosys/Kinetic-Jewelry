@@ -313,15 +313,15 @@ Three scripts for managing the development AVD:
 
 **`scripts/emulator-create.sh`:**
 - Download system image `system-images;android-35;google_apis;x86_64` via `sdkmanager`
-- Create AVD named `LyraAVD` using the Pixel 7 device profile
+- Create AVD named `WorkspaceAVD` using the Pixel 7 device profile
 - If AVD already exists, print message and exit 0 (idempotent)
 
 **`scripts/emulator-start.sh`:**
-- Start `LyraAVD` emulator in foreground with `-no-snapshot-load`
+- Start `WorkspaceAVD` emulator in foreground with `-no-snapshot-load`
 - If AVD doesn't exist, print error directing user to `scripts/emulator-create.sh` and exit 1
 
 **`scripts/emulator-delete.sh`:**
-- Delete AVD `LyraAVD` via `avdmanager delete avd --name LyraAVD`
+- Delete AVD `WorkspaceAVD` via `avdmanager delete avd --name WorkspaceAVD`
 
 All scripts validate `ANDROID_HOME` is set and the SDK is installed before proceeding.
 
@@ -550,7 +550,7 @@ versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 | Terraform plan | Manual | `tofu plan` in `_rhosys-apps-infra/gcp/` shows the new binding |
 | Setup script installs Java | Manual | Run `scripts/setup.sh` on clean machine, verify `java -version` shows 17 |
 | Setup script installs SDK | Manual | Run `scripts/setup.sh`, verify `sdkmanager --list` works |
-| Emulator create | Manual | Run `scripts/emulator-create.sh`, verify `avdmanager list avd` shows LyraAVD |
+| Emulator create | Manual | Run `scripts/emulator-create.sh`, verify `avdmanager list avd` shows WorkspaceAVD |
 | Emulator start | Manual | Run `scripts/emulator-start.sh`, verify emulator boots |
 | Commit-msg hook rejects short | Manual | Attempt commit with < 20 char message, verify rejection |
 | Pre-commit hook runs ktlint | Manual | Stage a malformatted `.kt` file, commit, verify ktlint runs |
