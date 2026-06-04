@@ -66,6 +66,12 @@ android {
     room {
         schemaDirectory("$projectDir/schemas")
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -98,6 +104,10 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.room.testing)
     testImplementation("org.json:json:20240303")
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.hilt.android.testing)
+    kspTest(libs.hilt.compiler)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
