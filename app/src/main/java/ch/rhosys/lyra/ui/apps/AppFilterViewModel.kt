@@ -20,114 +20,152 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class AppFilterViewModel @Inject constructor(
-    private val appRepo: AppFilterRepository,
-    private val contactRepo: ContactFilterRepository,
-    private val historyRepo: NotificationHistoryRepository,
-) : ViewModel() {
+class AppFilterViewModel
+    @Inject
+    constructor(
+        private val appRepo: AppFilterRepository,
+        private val contactRepo: ContactFilterRepository,
+        private val historyRepo: NotificationHistoryRepository,
+    ) : ViewModel() {
+        val apps: StateFlow<List<AppFilter>> =
+            appRepo
+                .observeAll()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val apps: StateFlow<List<AppFilter>> = appRepo.observeAll()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        val historyEntries: StateFlow<List<NotificationHistoryEntry>> =
+            historyRepo
+                .observeRecent()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val historyEntries: StateFlow<List<NotificationHistoryEntry>> = historyRepo.observeRecent()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        private val _contactsByApp = MutableStateFlow<Map<String, List<ContactFilter>>>(emptyMap())
+        val contactsByApp: StateFlow<Map<String, List<ContactFilter>>> = _contactsByApp.asStateFlow()
 
-    private val _contactsByApp = MutableStateFlow<Map<String, List<ContactFilter>>>(emptyMap())
-    val contactsByApp: StateFlow<Map<String, List<ContactFilter>>> = _contactsByApp.asStateFlow()
+        // Remove accordion state — no longer needed
+        private val _expandedPackage = MutableStateFlow<String?>(null)
+        val expandedPackage: StateFlow<String?> = _expandedPackage.asStateFlow()
 
-    // Remove accordion state — no longer needed
-    private val _expandedPackage = MutableStateFlow<String?>(null)
-    val expandedPackage: StateFlow<String?> = _expandedPackage.asStateFlow()
+        private val _contacts = MutableStateFlow<List<ContactFilter>>(emptyList())
+        val contacts: StateFlow<List<ContactFilter>> = _contacts.asStateFlow()
 
-    private val _contacts = MutableStateFlow<List<ContactFilter>>(emptyList())
-    val contacts: StateFlow<List<ContactFilter>> = _contacts.asStateFlow()
-
-    init {
-        // Load contacts for all watched apps
-        viewModelScope.launch {
-            apps.collectLatest { appList ->
-                val map = mutableMapOf<String, List<ContactFilter>>()
-                for (app in appList) {
-                    val contacts = contactRepo.getByApp(app.packageName)
-                    map[app.packageName] = contacts
+        init {
+            // Load contacts for all watched apps
+            viewModelScope.launch {
+                apps.collectLatest { appList ->
+                    val map = mutableMapOf<String, List<ContactFilter>>()
+                    for (app in appList) {
+                        val contacts = contactRepo.getByApp(app.packageName)
+                        map[app.packageName] = contacts
+                    }
+                    _contactsByApp.value = map
                 }
-                _contactsByApp.value = map
             }
         }
-    }
 
-    fun addApp(packageName: String, label: String) {
-        viewModelScope.launch {
-            val existing = appRepo.getByPackageName(packageName)
-            if (existing == null) {
-                appRepo.upsert(
-                    AppFilter(
-                        packageName = packageName,
-                        appLabel = label,
-                        isWatched = true,
-                        vibrationMode = VibrationMode.SHORT_PULSE,
-                        isContactLevelEnabled = false,
+        fun addApp(
+            packageName: String,
+            label: String,
+        ) {
+            viewModelScope.launch {
+                val existing = appRepo.getByPackageName(packageName)
+                if (existing == null) {
+                    appRepo.upsert(
+                        AppFilter(
+                            packageName = packageName,
+                            appLabel = label,
+                            isWatched = true,
+                            vibrationMode = VibrationMode.SHORT_PULSE,
+                            isContactLevelEnabled = false,
+                        ),
                     )
-                )
+                }
             }
         }
-    }
 
-    fun addUser(senderName: String, packageName: String, appLabel: String) {
-        viewModelScope.launch {
-            // Ensure app exists with contact-level enabled
-            val existing = appRepo.getByPackageName(packageName)
-            if (existing == null) {
-                appRepo.upsert(
-                    AppFilter(
-                        packageName = packageName,
-                        appLabel = appLabel,
-                        isWatched = true,
-                        vibrationMode = VibrationMode.SHORT_PULSE,
-                        isContactLevelEnabled = true,
+        fun addUser(
+            senderName: String,
+            packageName: String,
+            appLabel: String,
+        ) {
+            viewModelScope.launch {
+                // Ensure app exists with contact-level enabled
+                val existing = appRepo.getByPackageName(packageName)
+                if (existing == null) {
+                    appRepo.upsert(
+                        AppFilter(
+                            packageName = packageName,
+                            appLabel = appLabel,
+                            isWatched = true,
+                            vibrationMode = VibrationMode.SHORT_PULSE,
+                            isContactLevelEnabled = true,
+                        ),
                     )
-                )
-            } else if (!existing.isContactLevelEnabled) {
-                appRepo.upsert(existing.copy(isContactLevelEnabled = true))
-            }
+                } else if (!existing.isContactLevelEnabled) {
+                    appRepo.upsert(existing.copy(isContactLevelEnabled = true))
+                }
 
-            // Add the contact as watched
-            val existingContact = contactRepo.get(packageName, "", senderName)
-            if (existingContact == null) {
-                contactRepo.upsert(
-                    ContactFilter(
-                        packageName = packageName,
-                        groupName = "",
-                        contactName = senderName,
-                        isWatched = true,
-                        vibrationMode = null,
+                // Add the contact as watched
+                val existingContact = contactRepo.get(packageName, "", senderName)
+                if (existingContact == null) {
+                    contactRepo.upsert(
+                        ContactFilter(
+                            packageName = packageName,
+                            groupName = "",
+                            contactName = senderName,
+                            isWatched = true,
+                            vibrationMode = null,
+                        ),
                     )
-                )
+                }
+                // Refresh contacts map
+                refreshContacts(packageName)
             }
-            // Refresh contacts map
-            refreshContacts(packageName)
+        }
+
+        fun removeApp(packageName: String) {
+            viewModelScope.launch {
+                appRepo.delete(packageName)
+            }
+        }
+
+        fun setContactLevelEnabled(
+            filter: AppFilter,
+            enabled: Boolean,
+        ) {
+            viewModelScope.launch { appRepo.upsert(filter.copy(isContactLevelEnabled = enabled)) }
+        }
+
+        fun setContactWatched(
+            contact: ContactFilter,
+            watched: Boolean,
+        ) {
+            viewModelScope.launch {
+                contactRepo.upsert(contact.copy(isWatched = watched))
+                refreshContacts(contact.packageName)
+            }
+        }
+
+        fun setAppVibrationMode(
+            packageName: String,
+            mode: VibrationMode,
+        ) {
+            viewModelScope.launch {
+                val existing = appRepo.getByPackageName(packageName) ?: return@launch
+                appRepo.upsert(existing.copy(vibrationMode = mode))
+            }
+        }
+
+        fun setContactVibrationMode(
+            contact: ContactFilter,
+            mode: VibrationMode?,
+        ) {
+            viewModelScope.launch {
+                contactRepo.upsert(contact.copy(vibrationMode = mode))
+                refreshContacts(contact.packageName)
+            }
+        }
+
+        private suspend fun refreshContacts(packageName: String) {
+            val contacts = contactRepo.getByApp(packageName)
+            _contactsByApp.value = _contactsByApp.value.toMutableMap().apply { put(packageName, contacts) }
         }
     }
-
-    fun removeApp(packageName: String) {
-        viewModelScope.launch {
-            appRepo.delete(packageName)
-        }
-    }
-
-    fun setContactLevelEnabled(filter: AppFilter, enabled: Boolean) {
-        viewModelScope.launch { appRepo.upsert(filter.copy(isContactLevelEnabled = enabled)) }
-    }
-
-    fun setContactWatched(contact: ContactFilter, watched: Boolean) {
-        viewModelScope.launch {
-            contactRepo.upsert(contact.copy(isWatched = watched))
-            refreshContacts(contact.packageName)
-        }
-    }
-
-    private suspend fun refreshContacts(packageName: String) {
-        val contacts = contactRepo.getByApp(packageName)
-        _contactsByApp.value = _contactsByApp.value.toMutableMap().apply { put(packageName, contacts) }
-    }
-}
