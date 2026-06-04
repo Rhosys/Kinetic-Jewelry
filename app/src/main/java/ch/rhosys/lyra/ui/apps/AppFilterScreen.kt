@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
+import ch.rhosys.lyra.domain.model.VibrationMode
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @Composable
@@ -118,6 +120,8 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
                     contacts = contacts,
                     onContactLevelChange = { vm.setContactLevelEnabled(app, it) },
                     onContactWatchedChange = { contact, watched -> vm.setContactWatched(contact, watched) },
+                    onVibrationModeChange = { vm.setAppVibrationMode(app.packageName, it) },
+                    onContactVibrationModeChange = { contact, mode -> vm.setContactVibrationMode(contact, mode) },
                     onRemove = { vm.removeApp(app.packageName) },
                 )
             }
@@ -131,12 +135,19 @@ private fun AppSection(
     contacts: List<ContactFilter>,
     onContactLevelChange: (Boolean) -> Unit,
     onContactWatchedChange: (ContactFilter, Boolean) -> Unit,
+    onVibrationModeChange: (VibrationMode) -> Unit,
+    onContactVibrationModeChange: (ContactFilter, VibrationMode?) -> Unit,
     onRemove: () -> Unit,
 ) {
     val context = LocalContext.current
-    val appIcon: Drawable? = remember(app.packageName) {
-        try { context.packageManager.getApplicationIcon(app.packageName) } catch (_: Exception) { null }
-    }
+    val appIcon: Drawable? =
+        remember(app.packageName) {
+            try {
+                context.packageManager.getApplicationIcon(app.packageName)
+            } catch (_: Exception) {
+                null
+            }
+        }
     var showMenu by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -159,10 +170,22 @@ private fun AppSection(
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(
                         text = { Text("Remove App") },
-                        onClick = { showMenu = false; onRemove() },
+                        onClick = {
+                            showMenu = false
+                            onRemove()
+                        },
                     )
                 }
             }
+        }
+
+        // Vibration mode (app-level)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            Text("Vibration", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            VibrationModePicker(mode = app.vibrationMode, onModeSelected = onVibrationModeChange)
         }
 
         // "All Users" toggle
@@ -185,7 +208,11 @@ private fun AppSection(
                 )
             }
             contacts.forEach { contact ->
-                ContactRow(contact = contact, onWatchedChange = { onContactWatchedChange(contact, it) })
+                ContactRow(
+                    contact = contact,
+                    onWatchedChange = { onContactWatchedChange(contact, it) },
+                    onVibrationModeChange = { onContactVibrationModeChange(contact, it) },
+                )
             }
         }
     }
@@ -195,15 +222,71 @@ private fun AppSection(
 private fun ContactRow(
     contact: ContactFilter,
     onWatchedChange: (Boolean) -> Unit,
+    onVibrationModeChange: (VibrationMode?) -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp, bottom = 4.dp),
     ) {
-        val label = if (contact.groupName.isNotEmpty())
-            "${contact.groupName} › ${contact.contactName}"
-        else contact.contactName
+        val label =
+            if (contact.groupName.isNotEmpty()) {
+                "${contact.groupName} › ${contact.contactName}"
+            } else {
+                contact.contactName
+            }
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        NullableVibrationModePicker(mode = contact.vibrationMode, onModeSelected = onVibrationModeChange)
         Switch(checked = contact.isWatched ?: true, onCheckedChange = onWatchedChange)
+    }
+}
+
+@Composable
+private fun VibrationModePicker(
+    mode: VibrationMode,
+    onModeSelected: (VibrationMode) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) { Text(mode.displayName) }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            VibrationMode.entries.forEach { m ->
+                DropdownMenuItem(
+                    text = { Text(m.displayName) },
+                    onClick = {
+                        expanded = false
+                        onModeSelected(m)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NullableVibrationModePicker(
+    mode: VibrationMode?,
+    onModeSelected: (VibrationMode?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: "App default") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("App default") },
+                onClick = {
+                    expanded = false
+                    onModeSelected(null)
+                },
+            )
+            VibrationMode.entries.forEach { m ->
+                DropdownMenuItem(
+                    text = { Text(m.displayName) },
+                    onClick = {
+                        expanded = false
+                        onModeSelected(m)
+                    },
+                )
+            }
+        }
     }
 }
