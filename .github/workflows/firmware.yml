@@ -2,7 +2,7 @@ name: Firmware CI
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths:
       - "firmware/**"
       - "app/**"
