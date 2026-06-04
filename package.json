@@ -4,7 +4,8 @@
     "prepare": "husky",
     "test": "jest",
     "deploy:play-store": "tsx deployment/deploy-play-store.ts",
-    "deploy:notify": "tsx deployment/notify-deploy.ts"
+    "deploy:notify": "tsx deployment/notify-deploy.ts",
+    "live:debug": "adb logcat -c && adb logcat -s AndroidRuntime:E ch.rhosys.lyra:*"
   },
   "devDependencies": {
     "@aws-sdk/client-sesv2": "^3.1005.0",
