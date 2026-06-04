@@ -6,7 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,13 +52,14 @@ fun UserPickerDialog(
     val context = LocalContext.current
 
     // Deduplicate senders from history
-    val senders = remember(historyEntries) {
-        historyEntries
-            .filter { !it.senderName.isNullOrBlank() }
-            .map { SenderInfo(it.senderName!!, it.packageName, it.appLabel) }
-            .distinctBy { "${it.packageName}:${it.senderName}" }
-            .sortedBy { it.senderName.lowercase() }
-    }
+    val senders =
+        remember(historyEntries) {
+            historyEntries
+                .filter { !it.senderName.isNullOrBlank() }
+                .map { SenderInfo(it.senderName!!, it.packageName, it.appLabel) }
+                .distinctBy { "${it.packageName}:${it.senderName}" }
+                .sortedBy { it.senderName.lowercase() }
+        }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -67,9 +68,10 @@ fun UserPickerDialog(
         Surface(
             shape = MaterialTheme.shapes.large,
             tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.92f)
+                    .fillMaxHeight(0.8f),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
@@ -85,26 +87,32 @@ fun UserPickerDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                val linkText = buildAnnotatedString {
-                    append("To select all users for an app, ")
-                    pushStringAnnotation(tag = "action", annotation = "app_picker")
-                    withStyle(SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                    )) {
-                        append("watch all notifications for an app")
+                val linkText =
+                    buildAnnotatedString {
+                        append("To select all users for an app, ")
+                        pushStringAnnotation(tag = "action", annotation = "app_picker")
+                        withStyle(
+                            SpanStyle(
+                                color = MaterialTheme.colorScheme.primary,
+                                textDecoration = TextDecoration.Underline,
+                            ),
+                        ) {
+                            append("watch all notifications for an app")
+                        }
+                        pop()
+                        append(".")
                     }
-                    pop()
-                    append(".")
-                }
                 ClickableText(
                     text = linkText,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                    ),
+                    style =
+                        MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                        ),
                     onClick = { offset ->
-                        linkText.getStringAnnotations("action", offset, offset)
-                            .firstOrNull()?.let {
+                        linkText
+                            .getStringAnnotations("action", offset, offset)
+                            .firstOrNull()
+                            ?.let {
                                 onDismiss()
                                 onSwitchToAppPicker()
                             }
@@ -122,16 +130,21 @@ fun UserPickerDialog(
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(senders, key = { "${it.packageName}:${it.senderName}" }) { sender ->
-                            val appIcon: Drawable? = remember(sender.packageName) {
-                                try { context.packageManager.getApplicationIcon(sender.packageName) }
-                                catch (_: Exception) { null }
-                            }
+                            val appIcon: Drawable? =
+                                remember(sender.packageName) {
+                                    try {
+                                        context.packageManager.getApplicationIcon(sender.packageName)
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onUserSelected(sender.senderName, sender.packageName, sender.appLabel) }
-                                    .padding(vertical = 12.dp),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onUserSelected(sender.senderName, sender.packageName, sender.appLabel) }
+                                        .padding(vertical = 12.dp),
                             ) {
                                 if (appIcon != null) {
                                     Image(
@@ -143,7 +156,11 @@ fun UserPickerDialog(
                                 }
                                 Column {
                                     Text(sender.senderName, style = MaterialTheme.typography.bodyLarge)
-                                    Text(sender.appLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        sender.appLabel,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             }
                             HorizontalDivider()

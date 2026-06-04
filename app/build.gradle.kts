@@ -31,6 +31,7 @@ android {
 
     buildTypes {
         release {
+            // TODO: re-enable once PostHog LocalLifecycleOwner crash is confirmed fixed
             isMinifyEnabled = false
             // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
