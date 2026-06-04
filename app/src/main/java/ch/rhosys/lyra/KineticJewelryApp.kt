@@ -9,7 +9,6 @@ import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class KineticJewelryApp : Application() {
-
     /** Startup error captured for display in the UI if initialization fails. */
     var startupError: Throwable? = null
         private set
@@ -29,14 +28,15 @@ class KineticJewelryApp : Application() {
     }
 
     private fun initPostHog() {
-        val config = PostHogAndroidConfig(
-            apiKey = "phc_D195RxeDm7isiEPFR31SxBu0KED0Bdc0z9nwSlWM58",
-            host = "https://live.rhosys.ch",
-        ).apply {
-            captureApplicationLifecycleEvents = true
-            captureDeepLinks = true
-            sessionReplay = true
-        }
+        val config =
+            PostHogAndroidConfig(
+                apiKey = "phc_D195RxeDm7isiEPFR31SxBu0KED0Bdc0z9nwSlWM58",
+                host = "https://live.rhosys.ch",
+            ).apply {
+                captureApplicationLifecycleEvents = true
+                captureDeepLinks = true
+                // sessionReplay = true
+            }
         PostHogAndroid.setup(this, config)
     }
 
@@ -46,11 +46,12 @@ class KineticJewelryApp : Application() {
             try {
                 PostHog.capture(
                     event = "app_crashed",
-                    properties = mapOf(
-                        "exception" to throwable.javaClass.name,
-                        "message" to (throwable.message ?: ""),
-                        "stacktrace" to throwable.stackTraceToString(),
-                    ),
+                    properties =
+                        mapOf(
+                            "exception" to throwable.javaClass.name,
+                            "message" to (throwable.message ?: ""),
+                            "stacktrace" to throwable.stackTraceToString(),
+                        ),
                 )
                 PostHog.flush()
             } catch (_: Throwable) {
