@@ -46,6 +46,24 @@ silently uses the wrong toolchain or fails outright.
 
 ---
 
+## Local development — run on the emulator
+
+```bash
+npm run start            # debug variant: boots emulator, builds, installs, launches, streams crash logs
+npm run start:release    # release variant: same loop on the R8/ProGuard build — catches stripping crashes
+```
+
+`scripts/dev.sh` is the single orchestrator: runs `setup.sh` if the SDK is missing,
+creates the shared `WorkspaceAVD` (android-35, pixel_7) if absent, boots it, then
+gradle install + launch. All three workspace Android apps share one `WorkspaceAVD`
+and one system image — do not give this app its own AVD name.
+
+Emulator-only helpers: `npm run setup`, `npm run emulator:create|start|delete`.
+KVM is required (Linux). Troubleshooting lives in `scripts/setup.sh` (Java 17, SDK,
+KVM, ktlint).
+
+---
+
 ## Repository layout quick-reference
 
 ```

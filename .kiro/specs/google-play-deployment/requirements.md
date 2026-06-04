@@ -25,7 +25,7 @@ The project lives at `rhosys/rapid/kinetic-jewelry` on GitLab.
 - **Deploy_Script**: The TypeScript script at `deployment/deploy-play-store.ts` that uses `@googleapis/androidpublisher` to upload the signed AAB to the Google Play Internal Testing track for package `ch.rhosys.lyra`
 - **KMS_Decryption**: The process of decrypting ciphertext at build time using `aws kms decrypt` via the CI runner's OIDC-assumed IAM role; plaintext exists only in memory for the duration of the job
 - **Setup_Script**: The shell script at `scripts/setup.sh` that installs Java 17, Android SDK command-line tools, required SDK components, configures environment variables, and validates KVM acceleration
-- **Emulator_Scripts**: The shell scripts at `scripts/emulator-create.sh`, `scripts/emulator-start.sh`, and `scripts/emulator-delete.sh` that manage the development Android Virtual Device (LyraAVD)
+- **Emulator_Scripts**: The shell scripts at `scripts/emulator-create.sh`, `scripts/emulator-start.sh`, and `scripts/emulator-delete.sh` that manage the development Android Virtual Device (WorkspaceAVD)
 - **Git_Hooks**: The Husky-managed git hooks (commit-msg and pre-commit) that enforce commit message quality and run linting on staged files before commit
 - **Lint_Staged**: The lint-staged configuration that runs ktlint on staged `*.kt` files during the pre-commit hook
 - **Unified_Check**: The single Gradle command or script that runs compilation, lint, and unit tests in sequence as a pre-push quality gate
@@ -205,11 +205,11 @@ The project lives at `rhosys/rapid/kinetic-jewelry` on GitLab.
 #### Acceptance Criteria
 
 1. WHEN `scripts/emulator-create.sh` is executed, THE Emulator_Scripts SHALL download the system image `system-images;android-35;google_apis;x86_64` via `sdkmanager` if not already installed
-2. WHEN `scripts/emulator-create.sh` is executed, THE Emulator_Scripts SHALL create an AVD named `LyraAVD` using the Pixel 7 device profile
-3. IF the AVD `LyraAVD` already exists, THEN `scripts/emulator-create.sh` SHALL print a message indicating the AVD exists and exit with code 0 without recreating it
-4. WHEN `scripts/emulator-start.sh` is executed, THE Emulator_Scripts SHALL start the `LyraAVD` emulator in the foreground using `$ANDROID_HOME/emulator/emulator -avd LyraAVD -no-snapshot-load`
-5. IF the AVD `LyraAVD` does not exist when `scripts/emulator-start.sh` is run, THEN THE Emulator_Scripts SHALL print an error directing the user to run `scripts/emulator-create.sh` and exit with a non-zero code
-6. WHEN `scripts/emulator-delete.sh` is executed, THE Emulator_Scripts SHALL delete the AVD named `LyraAVD` using `avdmanager delete avd --name LyraAVD`
+2. WHEN `scripts/emulator-create.sh` is executed, THE Emulator_Scripts SHALL create an AVD named `WorkspaceAVD` using the Pixel 7 device profile
+3. IF the AVD `WorkspaceAVD` already exists, THEN `scripts/emulator-create.sh` SHALL print a message indicating the AVD exists and exit with code 0 without recreating it
+4. WHEN `scripts/emulator-start.sh` is executed, THE Emulator_Scripts SHALL start the `WorkspaceAVD` emulator in the foreground using `$ANDROID_HOME/emulator/emulator -avd WorkspaceAVD -no-snapshot-load`
+5. IF the AVD `WorkspaceAVD` does not exist when `scripts/emulator-start.sh` is run, THEN THE Emulator_Scripts SHALL print an error directing the user to run `scripts/emulator-create.sh` and exit with a non-zero code
+6. WHEN `scripts/emulator-delete.sh` is executed, THE Emulator_Scripts SHALL delete the AVD named `WorkspaceAVD` using `avdmanager delete avd --name WorkspaceAVD`
 7. THE Emulator_Scripts SHALL require `ANDROID_HOME` to be set and the SDK to be installed, exiting with a non-zero code and an error message if the SDK is not found
 
 ### Requirement 14: Git Hooks (Husky)

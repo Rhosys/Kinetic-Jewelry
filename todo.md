@@ -160,7 +160,7 @@ keep-rule / reflection crashes surface on the emulator before CI. The Play Store
 upload is signed separately (`android-upload-signing.keystore` + Play App
 Signing) — the local release signing config does not affect the published AAB.
 
-AVD: `LyraAVD` (pixel_7, android-35). Emulator-only helpers if needed:
+AVD: `WorkspaceAVD` (pixel_7, android-35). Emulator-only helpers if needed:
 `npm run setup`, `npm run emulator:create`, `npm run emulator:start`,
 `npm run emulator:delete`.
 
