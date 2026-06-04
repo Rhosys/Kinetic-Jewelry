@@ -143,6 +143,29 @@ To run locally: same command from the repo root (needs JDK 17).
 
 ---
 
+## How to run the app on the emulator (local validate loop)
+
+Single orchestrator — boots the emulator (creates it / installs the SDK on first
+run), builds, installs, launches, then streams crash logs. No explicit steps.
+
+```bash
+npm run start            # debug variant
+npm run start:release    # R8-minified release variant (catches stripping crashes)
+```
+
+`npm run start:release` is the local mirror of the instrumented release tests
+(`testBuildType = "release"`). It installs the ProGuard/R8-processed APK signed
+with the shared debug key (see `app/build.gradle.kts § buildTypes.release`) so
+keep-rule / reflection crashes surface on the emulator before CI. The Play Store
+upload is signed separately (`android-upload-signing.keystore` + Play App
+Signing) — the local release signing config does not affect the published AAB.
+
+AVD: `LyraAVD` (pixel_7, android-35). Emulator-only helpers if needed:
+`npm run setup`, `npm run emulator:create`, `npm run emulator:start`,
+`npm run emulator:delete`.
+
+---
+
 ## How to flash the firmware
 
 Requires the ESP toolchain on your dev machine (not in this repo):

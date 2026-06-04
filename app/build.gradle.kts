@@ -34,6 +34,12 @@ android {
             // TODO: re-enable once PostHog LocalLifecycleOwner crash is confirmed fixed
             isMinifyEnabled = false
             // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Sign release with the shared debug key so the minified variant is
+            // installable on a local emulator (npm run start:release) to catch
+            // R8 stripping crashes before they reach CI. The Play Store upload is
+            // signed separately via android-upload-signing.keystore + Play App
+            // Signing — this config does not affect the published artifact.
+            signingConfig = signingConfigs.getByName("sharedDebug")
         }
         debug {
             applicationIdSuffix = ".debug"
