@@ -30,7 +30,9 @@ uncaught exceptions in `Application.onCreate`) without needing an emulator or de
 
 3. Create a `HiltTestApp.kt` in `src/test`:
    ```kotlin
-   @CustomTestApplication(YourApp::class)
+   // Use Application::class, NOT YourApp::class — @HiltAndroidApp-annotated classes
+   // are rejected by @CustomTestApplication at compile time.
+   @CustomTestApplication(Application::class)
    interface HiltTestApp
    ```
 
