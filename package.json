@@ -8,6 +8,9 @@
     "emulator:create": "bash scripts/emulator-create.sh",
     "emulator:start": "bash scripts/emulator-start.sh",
     "emulator:delete": "bash scripts/emulator-delete.sh",
+    "build": "./gradlew :app:assembleDebug",
+    "build:release": "./gradlew :app:assembleRelease",
+    "check": "bash scripts/check.sh",
     "test": "jest",
     "deploy:play-store": "tsx deployment/deploy-play-store.ts",
     "deploy:notify": "tsx deployment/notify-deploy.ts"
