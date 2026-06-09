@@ -94,7 +94,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
         Text(
             text = "Current Watched Notifiers",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
         )
 
         LazyColumn(modifier = Modifier.weight(1f)) {
