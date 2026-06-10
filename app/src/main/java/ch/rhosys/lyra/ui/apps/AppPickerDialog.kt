@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class InstalledAppInfo(
     val packageName: String,
@@ -49,32 +52,35 @@ fun AppPickerDialog(
 ) {
     val context = LocalContext.current
 
-    val installedApps =
-        remember {
-            val pm = context.packageManager
-            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            pm
-                .queryIntentActivities(intent, 0)
-                .filter { ri ->
-                    (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-                }.map { ri ->
-                    InstalledAppInfo(
-                        packageName = ri.activityInfo.packageName,
-                        label = ri.loadLabel(pm).toString(),
-                        icon =
-                            try {
-                                pm.getApplicationIcon(ri.activityInfo.packageName)
-                            } catch (_: Exception) {
-                                null
-                            },
-                    )
-                }.distinctBy { it.packageName }
-                .sortedBy { it.label.lowercase() }
+    val installedApps by
+        produceState(initialValue = emptyList<InstalledAppInfo>()) {
+            value =
+                withContext(Dispatchers.IO) {
+                    val pm = context.packageManager
+                    val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                    pm
+                        .queryIntentActivities(intent, 0)
+                        .filter { ri ->
+                            (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                        }.map { ri ->
+                            InstalledAppInfo(
+                                packageName = ri.activityInfo.packageName,
+                                label = ri.loadLabel(pm).toString(),
+                                icon =
+                                    try {
+                                        pm.getApplicationIcon(ri.activityInfo.packageName)
+                                    } catch (_: Exception) {
+                                        null
+                                    },
+                            )
+                        }.distinctBy { it.packageName }
+                        .sortedBy { it.label.lowercase() }
+                }
         }
 
     var searchQuery by remember { mutableStateOf("") }
     val filtered =
-        remember(searchQuery) {
+        remember(searchQuery, installedApps) {
             if (searchQuery.isBlank()) {
                 installedApps
             } else {
