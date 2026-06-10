@@ -87,8 +87,14 @@ class BluetoothControllerImpl
             _scanResults.value = emptyList()
             _isScanning.value = true
             logger.info("BLE scan started")
-            bluetoothAdapter.bluetoothLeScanner?.startScan(scanCallback)
-                ?: logger.error("BLE scanner unavailable — is Bluetooth enabled?")
+            try {
+                bluetoothAdapter.bluetoothLeScanner?.startScan(scanCallback)
+                    ?: logger.error("BLE scanner unavailable — is Bluetooth enabled?")
+            } catch (e: SecurityException) {
+                logger.error("BLE scan permission denied", e)
+                _isScanning.value = false
+                return
+            }
             scanTimeoutJob?.cancel()
             scanTimeoutJob =
                 scope.launch {
@@ -100,14 +106,18 @@ class BluetoothControllerImpl
         override fun stopScan() {
             scanTimeoutJob?.cancel()
             scanTimeoutJob = null
-            bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+            try {
+                bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+            } catch (_: SecurityException) {
+                // Permission revoked — scanner already inactive
+            }
             _isScanning.value = false
             logger.info("BLE scan stopped (${_scanResults.value.size} device(s) found)")
         }
 
         override fun refreshPairedDevices() {
-            _pairedDevices.value =
-                try {
+            try {
+                _pairedDevices.value =
                     bluetoothAdapter.bondedDevices.map { device ->
                         BluetoothDeviceInfo(
                             address = device.address,
@@ -116,9 +126,9 @@ class BluetoothControllerImpl
                             connectionState = ConnectionState.DISCONNECTED,
                         )
                     }
-                } catch (_: SecurityException) {
-                    emptyList()
-                }
+            } catch (_: SecurityException) {
+                // Permission revoked at runtime — leave existing list intact
+            }
         }
 
         override suspend fun sendVibration(
