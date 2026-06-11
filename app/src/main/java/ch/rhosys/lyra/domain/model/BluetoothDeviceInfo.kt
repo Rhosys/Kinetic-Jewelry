@@ -5,4 +5,5 @@ data class BluetoothDeviceInfo(
     val name: String,
     val isAlertEnabled: Boolean,
     val connectionState: ConnectionState,
+    val deviceType: DeviceType = DeviceType.BLE_JEWELRY,
 )

@@ -34,23 +34,28 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.ConnectionState
+import ch.rhosys.lyra.domain.model.DeviceType
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.flow.collectLatest
 
+private val BluetoothDeviceInfo.deviceSubtitle: String
+    get() = if (deviceType == DeviceType.WEAR_OS) "Wear OS" else address
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
-    val blePermissions = rememberMultiplePermissionsState(
-        buildList {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                add(Manifest.permission.BLUETOOTH_SCAN)
-                add(Manifest.permission.BLUETOOTH_CONNECT)
-            } else {
-                add(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        }
-    )
+    val blePermissions =
+        rememberMultiplePermissionsState(
+            buildList {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    add(Manifest.permission.BLUETOOTH_SCAN)
+                    add(Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    add(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+            },
+        )
 
     val alertDevices by vm.alertDevices.collectAsState()
     val pairedDevices by vm.pairedDevices.collectAsState()
@@ -98,16 +103,17 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                             blePermissions.launchMultiplePermissionRequest()
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text(
                         when {
                             isScanning -> "Stop Scanning"
                             !blePermissions.allPermissionsGranted -> "Grant Bluetooth Permission"
                             else -> "Scan for Devices"
-                        }
+                        },
                     )
                 }
             }
@@ -155,9 +161,10 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                 item {
                     Text(
                         "No devices found. Scan or pair a device via Bluetooth settings.",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -186,7 +193,7 @@ private fun NearbyDeviceRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(device.name, style = MaterialTheme.typography.bodyLarge)
-            Text(device.address, style = MaterialTheme.typography.labelSmall)
+            Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
         }
         IconButton(onClick = onAdd) {
             Icon(Icons.Default.Add, contentDescription = "Add device")
@@ -206,14 +213,15 @@ private fun AlertDeviceRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(device.name, style = MaterialTheme.typography.bodyLarge)
-            Text(device.address, style = MaterialTheme.typography.labelSmall)
+            Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
         }
-        val stateLabel = when (device.connectionState) {
-            ConnectionState.CONNECTED    -> "Sending…"
-            ConnectionState.CONNECTING   -> "Connecting…"
-            ConnectionState.ERROR        -> "Error"
-            ConnectionState.DISCONNECTED -> "Idle"
-        }
+        val stateLabel =
+            when (device.connectionState) {
+                ConnectionState.CONNECTED -> "Sending…"
+                ConnectionState.CONNECTING -> "Connecting…"
+                ConnectionState.ERROR -> "Error"
+                ConnectionState.DISCONNECTED -> "Idle"
+            }
         SuggestionChip(onClick = {}, label = { Text(stateLabel) })
         Button(onClick = onTest, modifier = Modifier.padding(start = 8.dp)) { Text("Test") }
         OutlinedButton(onClick = onRemove, modifier = Modifier.padding(start = 4.dp)) { Text("Remove") }
@@ -231,7 +239,7 @@ private fun PairedDeviceRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(device.name, style = MaterialTheme.typography.bodyLarge)
-            Text(device.address, style = MaterialTheme.typography.labelSmall)
+            Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
         }
         Switch(checked = false, onCheckedChange = { if (it) onEnable() })
     }

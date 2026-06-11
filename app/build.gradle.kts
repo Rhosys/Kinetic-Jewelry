@@ -104,6 +104,9 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.posthog.android)
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
+    wearApp(project(":wear"))
 
     debugImplementation(libs.compose.ui.tooling)
 
