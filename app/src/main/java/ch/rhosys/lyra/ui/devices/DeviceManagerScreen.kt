@@ -8,12 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -64,12 +60,9 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
-        vm.snackbar.collectLatest { msg ->
-            snackbarHostState.showSnackbar(msg)
-        }
+        vm.snackbar.collectLatest { msg -> snackbarHostState.showSnackbar(msg) }
     }
 
-    // Auto-start scan once permissions are granted
     LaunchedEffect(blePermissions.allPermissionsGranted) {
         if (blePermissions.allPermissionsGranted && !isScanning) {
             vm.refreshDevices()
@@ -77,30 +70,32 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
         }
     }
 
-    // Also refresh paired devices every time this screen appears
     LaunchedEffect(Unit) {
-        if (blePermissions.allPermissionsGranted) {
-            vm.refreshDevices()
-        }
+        if (blePermissions.allPermissionsGranted) vm.refreshDevices()
     }
 
     val alertAddresses = alertDevices.map { it.address }.toSet()
-    val nearbyScanResults = scanResults.filter { it.address !in alertAddresses }
-    val isEmpty = alertDevices.isEmpty() && pairedDevices.isEmpty() && nearbyScanResults.isEmpty() && !isScanning
+    val pairedAddresses = pairedDevices.map { it.address }.toSet()
+    val allDevices =
+        remember(alertDevices, pairedDevices, scanResults) {
+            buildList {
+                addAll(alertDevices)
+                pairedDevices.forEach { if (it.address !in alertAddresses) add(it) }
+                scanResults.forEach {
+                    if (it.address !in alertAddresses && it.address !in pairedAddresses) add(it)
+                }
+            }
+        }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { innerPadding ->
         LazyColumn(modifier = Modifier.padding(innerPadding)) {
             item {
                 OutlinedButton(
                     onClick = {
-                        if (isScanning) {
-                            vm.stopScan()
-                        } else if (blePermissions.allPermissionsGranted) {
-                            vm.startScan()
-                        } else {
-                            blePermissions.launchMultiplePermissionRequest()
+                        when {
+                            isScanning -> vm.stopScan()
+                            blePermissions.allPermissionsGranted -> vm.startScan()
+                            else -> blePermissions.launchMultiplePermissionRequest()
                         }
                     },
                     modifier =
@@ -117,7 +112,8 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                     )
                 }
             }
-            if (!blePermissions.allPermissionsGranted && !isScanning) {
+
+            if (!blePermissions.allPermissionsGranted) {
                 item {
                     Text(
                         "Bluetooth permission is required to scan for nearby devices.",
@@ -127,83 +123,43 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                     )
                 }
             }
+
             if (isScanning) {
                 item {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                 }
             }
-            if (nearbyScanResults.isNotEmpty()) {
-                item { SectionHeader("Nearby Devices") }
-                items(nearbyScanResults, key = { "scan_${it.address}" }) { device ->
-                    NearbyDeviceRow(device = device, onAdd = { vm.enableAlert(device) })
-                    HorizontalDivider()
-                }
-            }
-            if (alertDevices.isNotEmpty()) {
-                item { SectionHeader("Alert-Enabled Devices") }
-                items(alertDevices, key = { it.address }) { device ->
-                    AlertDeviceRow(
-                        device = device,
-                        onTest = { vm.testDevice(device.address) },
-                        onRemove = { vm.disableAlert(device.address) },
-                    )
-                    HorizontalDivider()
-                }
-            }
-            if (pairedDevices.isNotEmpty()) {
-                item { SectionHeader("Other Paired Devices") }
-                items(pairedDevices, key = { it.address }) { device ->
-                    PairedDeviceRow(device = device, onEnable = { vm.enableAlert(device) })
-                    HorizontalDivider()
-                }
-            }
-            if (isEmpty) {
+
+            if (allDevices.isEmpty() && !isScanning) {
                 item {
                     Text(
                         "No devices found. Scan or pair a device via Bluetooth settings.",
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
+
+            items(allDevices, key = { it.address }) { device ->
+                val isAlert = device.address in alertAddresses
+                DeviceRow(
+                    device = device,
+                    isAlertEnabled = isAlert,
+                    onEnable = { vm.enableAlert(device) },
+                    onTest = { vm.testDevice(device.address) },
+                    onRemove = { vm.disableAlert(device.address) },
+                )
+                HorizontalDivider()
+            }
         }
     }
 }
 
 @Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(16.dp),
-    )
-}
-
-@Composable
-private fun NearbyDeviceRow(
+private fun DeviceRow(
     device: BluetoothDeviceInfo,
-    onAdd: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(device.name, style = MaterialTheme.typography.bodyLarge)
-            Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
-        }
-        IconButton(onClick = onAdd) {
-            Icon(Icons.Default.Add, contentDescription = "Add device")
-        }
-    }
-}
-
-@Composable
-private fun AlertDeviceRow(
-    device: BluetoothDeviceInfo,
+    isAlertEnabled: Boolean,
+    onEnable: () -> Unit,
     onTest: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -215,32 +171,20 @@ private fun AlertDeviceRow(
             Text(device.name, style = MaterialTheme.typography.bodyLarge)
             Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
         }
-        val stateLabel =
-            when (device.connectionState) {
-                ConnectionState.CONNECTED -> "Sending…"
-                ConnectionState.CONNECTING -> "Connecting…"
-                ConnectionState.ERROR -> "Error"
-                ConnectionState.DISCONNECTED -> "Idle"
-            }
-        SuggestionChip(onClick = {}, label = { Text(stateLabel) })
-        Button(onClick = onTest, modifier = Modifier.padding(start = 8.dp)) { Text("Test") }
-        OutlinedButton(onClick = onRemove, modifier = Modifier.padding(start = 4.dp)) { Text("Remove") }
-    }
-}
 
-@Composable
-private fun PairedDeviceRow(
-    device: BluetoothDeviceInfo,
-    onEnable: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(device.name, style = MaterialTheme.typography.bodyLarge)
-            Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
+        if (isAlertEnabled) {
+            val stateLabel =
+                when (device.connectionState) {
+                    ConnectionState.CONNECTED -> "Sending…"
+                    ConnectionState.CONNECTING -> "Connecting…"
+                    ConnectionState.ERROR -> "Error"
+                    ConnectionState.DISCONNECTED -> "Idle"
+                }
+            SuggestionChip(onClick = {}, label = { Text(stateLabel) })
+            Button(onClick = onTest, modifier = Modifier.padding(start = 8.dp)) { Text("Test") }
+            OutlinedButton(onClick = onRemove, modifier = Modifier.padding(start = 4.dp)) { Text("Remove") }
+        } else {
+            Switch(checked = false, onCheckedChange = { if (it) onEnable() })
         }
-        Switch(checked = false, onCheckedChange = { if (it) onEnable() })
     }
 }
