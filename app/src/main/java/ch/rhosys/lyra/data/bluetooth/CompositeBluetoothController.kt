@@ -53,11 +53,12 @@ class CompositeBluetoothController
         override suspend fun sendVibration(
             address: String,
             mode: VibrationMode,
+            timeoutMs: Long,
         ): Result<Unit> =
             if (address.startsWith(WEAR_ADDRESS_PREFIX)) {
-                wearController.sendVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), mode)
+                wearController.sendVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), mode, timeoutMs)
             } else {
-                bleController.sendVibration(address, mode)
+                bleController.sendVibration(address, mode, timeoutMs)
             }
 
         override fun releaseResources() = bleController.releaseResources()

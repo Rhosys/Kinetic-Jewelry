@@ -32,7 +32,6 @@ import javax.inject.Singleton
 private val SERVICE_UUID = UUID.fromString("6b2f0001-0000-1000-8000-00805f9b34fb")
 private val COMMAND_CHAR_UUID = UUID.fromString("6b2f0002-0000-1000-8000-00805f9b34fb")
 private val FIRMWARE_CHAR_UUID = UUID.fromString("6b2f0004-0000-1000-8000-00805f9b34fb")
-private const val CONNECT_TIMEOUT_MS = 15_000L
 private const val SCAN_TIMEOUT_MS = 10_000L
 
 @SuppressLint("MissingPermission") // Permissions checked at UI layer before invoking controller
@@ -134,10 +133,11 @@ class BluetoothControllerImpl
         override suspend fun sendVibration(
             address: String,
             mode: VibrationMode,
+            timeoutMs: Long,
         ): Result<Unit> {
             logger.info("Sending vibration ($mode) to $address")
             return runCatching {
-                withTimeout(CONNECT_TIMEOUT_MS) {
+                withTimeout(timeoutMs) {
                     val events = Channel<GattEvent>(capacity = 16)
                     val callback = BleGattCallback(events)
                     val device = bluetoothAdapter.getRemoteDevice(address)

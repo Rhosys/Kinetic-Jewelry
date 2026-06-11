@@ -148,6 +148,7 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                     onEnable = { vm.enableAlert(device) },
                     onTest = { vm.testDevice(device.address) },
                     onRemove = { vm.disableAlert(device.address) },
+                    onReEnable = { vm.reEnableDevice(device.address) },
                 )
                 HorizontalDivider()
             }
@@ -162,6 +163,7 @@ private fun DeviceRow(
     onEnable: () -> Unit,
     onTest: () -> Unit,
     onRemove: () -> Unit,
+    onReEnable: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -170,18 +172,29 @@ private fun DeviceRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(device.name, style = MaterialTheme.typography.bodyLarge)
             Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
+            if (isAlertEnabled && device.isCurrentlyDisabled) {
+                Text(
+                    "Auto-disabled — repeated timeouts",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
 
         if (isAlertEnabled) {
-            val stateLabel =
-                when (device.connectionState) {
-                    ConnectionState.CONNECTED -> "Sending…"
-                    ConnectionState.CONNECTING -> "Connecting…"
-                    ConnectionState.ERROR -> "Error"
-                    ConnectionState.DISCONNECTED -> "Idle"
-                }
-            SuggestionChip(onClick = {}, label = { Text(stateLabel) })
-            Button(onClick = onTest, modifier = Modifier.padding(start = 8.dp)) { Text("Test") }
+            if (device.isCurrentlyDisabled) {
+                Button(onClick = onReEnable, modifier = Modifier.padding(start = 8.dp)) { Text("Re-enable") }
+            } else {
+                val stateLabel =
+                    when (device.connectionState) {
+                        ConnectionState.CONNECTED -> "Sending…"
+                        ConnectionState.CONNECTING -> "Connecting…"
+                        ConnectionState.ERROR -> "Error"
+                        ConnectionState.DISCONNECTED -> "Idle"
+                    }
+                SuggestionChip(onClick = {}, label = { Text(stateLabel) })
+                Button(onClick = onTest, modifier = Modifier.padding(start = 8.dp)) { Text("Test") }
+            }
             OutlinedButton(onClick = onRemove, modifier = Modifier.padding(start = 4.dp)) { Text("Remove") }
         } else {
             Switch(checked = false, onCheckedChange = { if (it) onEnable() })

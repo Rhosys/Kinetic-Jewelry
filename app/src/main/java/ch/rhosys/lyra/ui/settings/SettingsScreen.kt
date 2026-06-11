@@ -20,7 +20,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +40,8 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import ch.rhosys.lyra.data.LogLevel
+import ch.rhosys.lyra.domain.AppSettingsProvider
+import ch.rhosys.lyra.domain.model.MultiDeviceMode
 
 @Composable
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
@@ -44,6 +49,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val listenerConnected by vm.listenerConnected.collectAsState()
     val batteryOptimizationIgnored by vm.batteryOptimizationIgnored.collectAsState()
     val logEntries by vm.logEntries.collectAsState()
+    val connectionTimeoutMs by vm.connectionTimeoutMs.collectAsState()
+    val multiDeviceMode by vm.multiDeviceMode.collectAsState()
+    val autoReEnable24h by vm.autoReEnable24h.collectAsState()
     val context = LocalContext.current
 
     LifecycleResumeEffect(Unit) {
@@ -54,9 +62,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val scrollState = rememberScrollState()
 
     Column(
-        modifier = Modifier
-            .verticalScroll(scrollState)
-            .padding(16.dp),
+        modifier =
+            Modifier
+                .verticalScroll(scrollState)
+                .padding(16.dp),
     ) {
         Text("Notification Access", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
@@ -137,17 +146,85 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         var btPermGranted by remember { mutableStateOf(true) }
 
         LifecycleResumeEffect(Unit) {
-            notifPermGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            } else true
-            btPermGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-            } else true
+            notifPermGranted =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    true
+                }
+            btPermGranted =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    true
+                }
             onPauseOrDispose {}
         }
 
         PermissionStatusRow("Push Notifications", notifPermGranted)
         PermissionStatusRow("Bluetooth", btPermGranted)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        Text("Connection", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val timeoutSec = (connectionTimeoutMs / 1_000f)
+        Text(
+            "Connection timeout: ${timeoutSec.toInt()}s",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Slider(
+            value = timeoutSec,
+            onValueChange = { vm.setConnectionTimeoutMs((it * 1_000).toLong()) },
+            valueRange = (AppSettingsProvider.MIN_TIMEOUT_MS / 1_000f)..(AppSettingsProvider.SYSTEM_MAX_TIMEOUT_MS / 1_000f),
+            steps = ((AppSettingsProvider.SYSTEM_MAX_TIMEOUT_MS - AppSettingsProvider.MIN_TIMEOUT_MS) / 1_000 - 1).toInt(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Multi-device mode", style = MaterialTheme.typography.bodyMedium)
+        MultiDeviceMode.entries.forEach { mode ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                RadioButton(
+                    selected = multiDeviceMode == mode,
+                    onClick = { vm.setMultiDeviceMode(mode) },
+                )
+                Column {
+                    Text(mode.displayName, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        when (mode) {
+                            MultiDeviceMode.ALL_DEVICES -> "Vibrate all devices; wait 1s after first response"
+                            MultiDeviceMode.FIRST_WINS -> "Send to devices in order; stop after first success"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Auto re-enable after 24h", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Automatically re-enable devices disabled after repeated timeouts",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = autoReEnable24h,
+                onCheckedChange = { vm.setAutoReEnable24h(it) },
+            )
+        }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
@@ -162,9 +239,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 120.dp, max = 300.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 120.dp, max = 300.dp),
         ) {
             val listState = rememberLazyListState()
 
@@ -189,11 +267,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     }
                 }
                 items(logEntries, key = { "${it.timestamp}_${it.message.hashCode()}" }) { entry ->
-                    val color = when (entry.level) {
-                        LogLevel.ERROR -> MaterialTheme.colorScheme.error
-                        LogLevel.WARN -> MaterialTheme.colorScheme.tertiary
-                        LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    val color =
+                        when (entry.level) {
+                            LogLevel.ERROR -> MaterialTheme.colorScheme.error
+                            LogLevel.WARN -> MaterialTheme.colorScheme.tertiary
+                            LogLevel.INFO -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     Text(
                         text = "${entry.timestamp} ${entry.message}",
                         style = MaterialTheme.typography.bodySmall,
@@ -206,7 +285,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun PermissionStatusRow(label: String, granted: Boolean) {
+private fun PermissionStatusRow(
+    label: String,
+    granted: Boolean,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

@@ -16,6 +16,12 @@ data class BluetoothDeviceEntity(
     val firmwareProtocolVersion: Int = 1,
     @ColumnInfo(name = "device_type", defaultValue = "BLE_JEWELRY")
     val deviceType: String = DeviceType.BLE_JEWELRY.name,
+    @ColumnInfo(name = "connection_timeout_ms")
+    val connectionTimeoutMs: Long? = null,
+    @ColumnInfo(name = "disabled_until")
+    val disabledUntil: Long? = null,
+    @ColumnInfo(name = "consecutive_timeouts", defaultValue = "0")
+    val consecutiveTimeouts: Int = 0,
 ) {
     fun toDomain(): BluetoothDeviceInfo =
         BluetoothDeviceInfo(
@@ -24,6 +30,9 @@ data class BluetoothDeviceEntity(
             isAlertEnabled = isAlertEnabled,
             connectionState = ConnectionState.DISCONNECTED,
             deviceType = runCatching { DeviceType.valueOf(deviceType) }.getOrDefault(DeviceType.BLE_JEWELRY),
+            connectionTimeoutMs = connectionTimeoutMs,
+            disabledUntil = disabledUntil,
+            consecutiveTimeouts = consecutiveTimeouts,
         )
 
     companion object {
@@ -36,6 +45,9 @@ data class BluetoothDeviceEntity(
             isAlertEnabled = device.isAlertEnabled,
             firmwareProtocolVersion = firmwareProtocolVersion,
             deviceType = device.deviceType.name,
+            connectionTimeoutMs = device.connectionTimeoutMs,
+            disabledUntil = device.disabledUntil,
+            consecutiveTimeouts = device.consecutiveTimeouts,
         )
     }
 }
