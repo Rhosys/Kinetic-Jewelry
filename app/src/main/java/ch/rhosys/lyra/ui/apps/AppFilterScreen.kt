@@ -45,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.ui.util.previewVibration
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @Composable
@@ -287,6 +288,7 @@ private fun VibrationModePicker(
     onModeSelected: (VibrationMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode.displayName) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -295,6 +297,7 @@ private fun VibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
+                        previewVibration(context, m)
                         onModeSelected(m)
                     },
                 )
@@ -309,6 +312,7 @@ private fun NullableVibrationModePicker(
     onModeSelected: (VibrationMode?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: "App default") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -324,6 +328,7 @@ private fun NullableVibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
+                        previewVibration(context, m)
                         onModeSelected(m)
                     },
                 )
