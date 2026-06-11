@@ -16,7 +16,7 @@ import ch.rhosys.lyra.data.local.db.entity.NotificationHistoryEntity
 
 @Database(
     entities = [AppFilterEntity::class, ContactFilterEntity::class, BluetoothDeviceEntity::class, NotificationHistoryEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -57,6 +57,15 @@ abstract class AppDatabase : RoomDatabase() {
                     db.execSQL(
                         "ALTER TABLE `bluetooth_devices` ADD COLUMN `device_type` TEXT NOT NULL DEFAULT 'BLE_JEWELRY'",
                     )
+                }
+            }
+
+        val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `bluetooth_devices` ADD COLUMN `connection_timeout_ms` INTEGER")
+                    db.execSQL("ALTER TABLE `bluetooth_devices` ADD COLUMN `disabled_until` INTEGER")
+                    db.execSQL("ALTER TABLE `bluetooth_devices` ADD COLUMN `consecutive_timeouts` INTEGER NOT NULL DEFAULT 0")
                 }
             }
     }
