@@ -8,6 +8,10 @@
     <application
         android:label="Lyra">
 
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="false" />
+
         <!-- Minimal launcher activity required by Wear OS -->
         <activity
             android:name=".MainActivity"
