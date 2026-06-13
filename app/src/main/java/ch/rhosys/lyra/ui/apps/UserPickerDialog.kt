@@ -21,8 +21,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import ch.rhosys.lyra.data.AppIconCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -130,14 +135,12 @@ fun UserPickerDialog(
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(senders, key = { "${it.packageName}:${it.senderName}" }) { sender ->
-                            val appIcon: Drawable? =
-                                remember(sender.packageName) {
-                                    try {
-                                        context.packageManager.getApplicationIcon(sender.packageName)
-                                    } catch (_: Exception) {
-                                        null
-                                    }
+                            val appIcon by produceState<Drawable?>(null, sender.packageName) {
+                                value = withContext(Dispatchers.IO) {
+                                    AppIconCache.loadIcon(context.applicationContext, sender.packageName)
+                                        ?: try { context.packageManager.getApplicationIcon(sender.packageName) } catch (_: Exception) { null }
                                 }
+                            }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier =
