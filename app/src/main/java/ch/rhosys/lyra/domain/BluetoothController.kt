@@ -10,9 +10,17 @@ interface BluetoothController {
     val scanResults: StateFlow<List<BluetoothDeviceInfo>>
     val isScanning: StateFlow<Boolean>
 
-    suspend fun sendVibration(address: String, mode: VibrationMode): Result<Unit>
+    suspend fun sendVibration(
+        address: String,
+        mode: VibrationMode,
+        timeoutMs: Long = AppSettingsProvider.DEFAULT_TIMEOUT_MS,
+    ): Result<Unit>
+
     fun startScan()
+
     fun stopScan()
+
     fun refreshPairedDevices()
+
     fun releaseResources()
 }

@@ -20,13 +20,23 @@ class FakeBluetoothController : BluetoothController {
     private val _isScanning = MutableStateFlow(false)
     override val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
-    override fun startScan() { _isScanning.value = true }
-    override fun stopScan() { _isScanning.value = false }
+    override fun startScan() {
+        _isScanning.value = true
+    }
+
+    override fun stopScan() {
+        _isScanning.value = false
+    }
+
     override fun refreshPairedDevices() {}
 
     val sentCommands = mutableListOf<VibrationCommand>()
 
-    override suspend fun sendVibration(address: String, mode: VibrationMode): Result<Unit> {
+    override suspend fun sendVibration(
+        address: String,
+        mode: VibrationMode,
+        timeoutMs: Long,
+    ): Result<Unit> {
         sentCommands += VibrationCommand(address, mode, System.currentTimeMillis())
         return Result.success(Unit)
     }
