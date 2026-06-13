@@ -47,6 +47,7 @@ data class InstalledAppInfo(
 
 @Composable
 fun AppPickerDialog(
+    historyApps: List<Pair<String, String>> = emptyList(),
     onDismiss: () -> Unit,
     onAppSelected: (packageName: String, label: String) -> Unit,
 ) {
@@ -58,23 +59,44 @@ fun AppPickerDialog(
                 withContext(Dispatchers.IO) {
                     val pm = context.packageManager
                     val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                    pm
-                        .queryIntentActivities(intent, 0)
-                        .filter { ri ->
-                            (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-                        }.map { ri ->
-                            InstalledAppInfo(
-                                packageName = ri.activityInfo.packageName,
-                                label = ri.loadLabel(pm).toString(),
-                                icon =
-                                    try {
-                                        pm.getApplicationIcon(ri.activityInfo.packageName)
-                                    } catch (_: Exception) {
-                                        null
-                                    },
-                            )
-                        }.distinctBy { it.packageName }
-                        .sortedBy { it.label.lowercase() }
+                    val launcherApps =
+                        pm
+                            .queryIntentActivities(intent, 0)
+                            .filter { ri ->
+                                (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                            }.map { ri ->
+                                InstalledAppInfo(
+                                    packageName = ri.activityInfo.packageName,
+                                    label = ri.loadLabel(pm).toString(),
+                                    icon =
+                                        try {
+                                            pm.getApplicationIcon(ri.activityInfo.packageName)
+                                        } catch (_: Exception) {
+                                            null
+                                        },
+                                )
+                            }.distinctBy { it.packageName }
+
+                    val launcherPkgs = launcherApps.map { it.packageName }.toSet()
+
+                    val historyOnly =
+                        historyApps
+                            .distinctBy { it.first }
+                            .filter { (pkg, _) -> pkg !in launcherPkgs }
+                            .map { (pkg, label) ->
+                                InstalledAppInfo(
+                                    packageName = pkg,
+                                    label = label,
+                                    icon =
+                                        try {
+                                            pm.getApplicationIcon(pkg)
+                                        } catch (_: Exception) {
+                                            null
+                                        },
+                                )
+                            }
+
+                    (launcherApps + historyOnly).sortedBy { it.label.lowercase() }
                 }
         }
 

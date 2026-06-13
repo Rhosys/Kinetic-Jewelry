@@ -70,6 +70,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
 
     if (showAppPicker) {
         AppPickerDialog(
+            historyApps = historyEntries.map { it.packageName to it.appLabel },
             onDismiss = { showAppPicker = false },
             onAppSelected = { packageName, label ->
                 vm.addApp(packageName, label)
