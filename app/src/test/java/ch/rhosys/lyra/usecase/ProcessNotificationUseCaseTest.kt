@@ -14,7 +14,6 @@ import ch.rhosys.lyra.fake.FakeBluetoothDeviceRepository
 import ch.rhosys.lyra.fake.FakeContactFilterRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -95,20 +94,17 @@ class ProcessNotificationUseCaseTest {
             assertNull(contactRepo.get("com.example", "", "Alice"))
         }
 
-    // ── Scenario 4: contact-level enabled, new contact ──────────────────────
+    // ── Scenario 4: contact-level enabled, unknown sender falls back to app mode ──────────────────────
 
     @Test
-    fun `new contact is auto-created with null inherit and app mode fires`() =
+    fun `unknown sender is not auto-created and app mode fires`() =
         runTest {
             appRepo.upsert(watchedApp(mode = VibrationMode.HEARTBEAT, contactLevelEnabled = true))
             deviceRepo.upsert(alertDevice)
 
             useCase.execute("com.example", "", "Alice")
 
-            val created = contactRepo.get("com.example", "", "Alice")
-            assertNotNull("Contact should be auto-created", created)
-            assertNull("New contact isWatched should be null (inherit)", created!!.isWatched)
-            assertNull("New contact vibrationMode should be null (inherit)", created.vibrationMode)
+            assertNull("Unknown sender must not be auto-added", contactRepo.get("com.example", "", "Alice"))
             assertEquals(1, btController.sentCommands.size)
             assertEquals(VibrationMode.HEARTBEAT, btController.sentCommands[0].mode)
         }
