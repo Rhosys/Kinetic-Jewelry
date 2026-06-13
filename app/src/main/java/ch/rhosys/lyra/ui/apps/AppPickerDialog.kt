@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import ch.rhosys.lyra.data.AppIconCache
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,16 +66,16 @@ fun AppPickerDialog(
                             .filter { ri ->
                                 (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
                             }.map { ri ->
-                                InstalledAppInfo(
-                                    packageName = ri.activityInfo.packageName,
-                                    label = ri.loadLabel(pm).toString(),
-                                    icon =
-                                        try {
-                                            pm.getApplicationIcon(ri.activityInfo.packageName)
-                                        } catch (_: Exception) {
-                                            null
-                                        },
-                                )
+                                val pkg = ri.activityInfo.packageName
+                                val label = ri.loadLabel(pm).toString()
+                                val icon =
+                                    AppIconCache.loadIcon(context.applicationContext, pkg)
+                                        ?: try {
+                                            pm.getApplicationIcon(pkg).also { d ->
+                                                AppIconCache.saveIcon(context.applicationContext, pkg, d)
+                                            }
+                                        } catch (_: Exception) { null }
+                                InstalledAppInfo(packageName = pkg, label = label, icon = icon)
                             }.distinctBy { it.packageName }
 
                     val launcherPkgs = launcherApps.map { it.packageName }.toSet()
@@ -84,16 +85,14 @@ fun AppPickerDialog(
                             .distinctBy { it.first }
                             .filter { (pkg, _) -> pkg !in launcherPkgs }
                             .map { (pkg, label) ->
-                                InstalledAppInfo(
-                                    packageName = pkg,
-                                    label = label,
-                                    icon =
-                                        try {
-                                            pm.getApplicationIcon(pkg)
-                                        } catch (_: Exception) {
-                                            null
-                                        },
-                                )
+                                val icon =
+                                    AppIconCache.loadIcon(context.applicationContext, pkg)
+                                        ?: try {
+                                            pm.getApplicationIcon(pkg).also { d ->
+                                                AppIconCache.saveIcon(context.applicationContext, pkg, d)
+                                            }
+                                        } catch (_: Exception) { null }
+                                InstalledAppInfo(packageName = pkg, label = label, icon = icon)
                             }
 
                     (launcherApps + historyOnly).sortedBy { it.label.lowercase() }

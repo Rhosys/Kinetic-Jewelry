@@ -33,8 +33,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ch.rhosys.lyra.data.AppIconCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -183,14 +187,12 @@ private fun AppSection(
     onRemove: () -> Unit,
 ) {
     val context = LocalContext.current
-    val appIcon: Drawable? =
-        remember(app.packageName) {
-            try {
-                context.packageManager.getApplicationIcon(app.packageName)
-            } catch (_: Exception) {
-                null
-            }
+    val appIcon by produceState<Drawable?>(null, app.packageName) {
+        value = withContext(Dispatchers.IO) {
+            AppIconCache.loadIcon(context.applicationContext, app.packageName)
+                ?: try { context.packageManager.getApplicationIcon(app.packageName) } catch (_: Exception) { null }
         }
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
