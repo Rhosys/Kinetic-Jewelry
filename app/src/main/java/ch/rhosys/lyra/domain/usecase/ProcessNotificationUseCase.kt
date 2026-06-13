@@ -3,7 +3,6 @@ package ch.rhosys.lyra.domain.usecase
 import ch.rhosys.lyra.domain.AppSettingsProvider
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
-import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.MultiDeviceMode
 import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.domain.repository.AppFilterRepository
@@ -41,8 +40,6 @@ class ProcessNotificationUseCase
             if (!appFilter.isContactLevelEnabled) {
                 effectiveMode = appFilter.vibrationMode
             } else {
-                autoUpsertContact(packageName, groupName, contactName)
-
                 val senderRule = contactFilterRepository.get(packageName, groupName, contactName)
                 val groupRule =
                     if (groupName.isNotEmpty()) {
@@ -161,23 +158,5 @@ class ProcessNotificationUseCase
         ): Long {
             val deviceCap = device.connectionTimeoutMs ?: Long.MAX_VALUE
             return minOf(userTimeoutMs, AppSettingsProvider.SYSTEM_MAX_TIMEOUT_MS, deviceCap)
-        }
-
-        private suspend fun autoUpsertContact(
-            packageName: String,
-            groupName: String,
-            contactName: String,
-        ) {
-            if (contactFilterRepository.get(packageName, groupName, contactName) == null) {
-                contactFilterRepository.upsert(
-                    ContactFilter(
-                        packageName = packageName,
-                        groupName = groupName,
-                        contactName = contactName,
-                        isWatched = null,
-                        vibrationMode = null,
-                    ),
-                )
-            }
         }
     }
