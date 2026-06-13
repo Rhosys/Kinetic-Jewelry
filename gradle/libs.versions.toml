@@ -1,20 +1,21 @@
 [versions]
-agp                 = "8.5.0"
-kotlin              = "2.0.0"
-ksp                 = "2.0.0-1.0.21"
-compose-bom         = "2024.06.00"
-hilt                = "2.51.1"
-room                = "2.6.1"
-lifecycle           = "2.8.2"
-navigation          = "2.7.7"
-coroutines          = "1.8.1"
-datastore           = "1.1.1"
-accompanist         = "0.34.0"
-posthog             = "3.9.1"
-junit               = "4.13.2"
-coroutines-test     = "1.8.1"
-robolectric         = "4.14.1"
-androidx-test-ext   = "1.2.1"
+agp                    = "8.5.0"
+kotlin                 = "2.0.0"
+ksp                    = "2.0.0-1.0.21"
+compose-bom            = "2024.06.00"
+hilt                   = "2.51.1"
+room                   = "2.6.1"
+lifecycle              = "2.8.2"
+navigation             = "2.7.7"
+coroutines             = "1.8.1"
+datastore              = "1.1.1"
+accompanist            = "0.34.0"
+posthog                = "3.9.1"
+play-services-wearable = "18.2.0"
+junit                  = "4.13.2"
+coroutines-test        = "1.8.1"
+robolectric            = "4.14.1"
+androidx-test-ext      = "1.2.1"
 
 [libraries]
 androidx-core-ktx           = { module = "androidx.core:core-ktx",                          version = "1.13.1" }
@@ -47,7 +48,9 @@ datastore-preferences       = { module = "androidx.datastore:datastore-preferenc
 accompanist-permissions     = { module = "com.google.accompanist:accompanist-permissions",   version.ref = "accompanist" }
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist" }
 
-posthog-android             = { module = "com.posthog:posthog-android",                       version.ref = "posthog" }
+posthog-android                   = { module = "com.posthog:posthog-android",                                  version.ref = "posthog" }
+play-services-wearable            = { module = "com.google.android.gms:play-services-wearable",               version.ref = "play-services-wearable" }
+kotlinx-coroutines-play-services  = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services",      version.ref = "coroutines" }
 
 junit                       = { module = "junit:junit",                                      version.ref = "junit" }
 kotlinx-coroutines-test     = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",   version.ref = "coroutines-test" }

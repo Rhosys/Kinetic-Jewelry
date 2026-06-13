@@ -27,6 +27,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import ch.rhosys.lyra.domain.AppSettingsProvider
+import ch.rhosys.lyra.domain.repository.BluetoothDeviceRepository
 import ch.rhosys.lyra.ui.error.StartupErrorScreen
 import ch.rhosys.lyra.ui.navigation.AppNavHost
 import ch.rhosys.lyra.ui.navigation.Screen
@@ -34,10 +36,16 @@ import ch.rhosys.lyra.ui.onboarding.SetupScreen
 import ch.rhosys.lyra.ui.onboarding.isNotificationListenerEnabled
 import ch.rhosys.lyra.ui.theme.KineticJewelryTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var deviceRepo: BluetoothDeviceRepository
+
+    @Inject lateinit var appSettings: AppSettingsProvider
+
     private var hasNotificationAccess by mutableStateOf(false)
     private var hasBlePermission by mutableStateOf(false)
 
@@ -52,6 +60,7 @@ class MainActivity : ComponentActivity() {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 hasNotificationAccess = isNotificationListenerEnabled(this@MainActivity)
                 hasBlePermission = checkBlePermission()
+                checkReEnableDevices()
             }
         }
 
@@ -105,6 +114,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private suspend fun checkReEnableDevices() {
+        if (!appSettings.autoReEnable24h.first()) return
+        val now = System.currentTimeMillis()
+        deviceRepo
+            .getAll()
+            .filter { it.isCurrentlyDisabled && now >= (it.disabledUntil ?: 0) + AppSettingsProvider.AUTO_RE_ENABLE_DURATION_MS }
+            .forEach { deviceRepo.setDisabledUntil(it.address, null) }
     }
 
     private fun checkBlePermission(): Boolean {
