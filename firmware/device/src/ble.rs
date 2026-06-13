@@ -1,21 +1,15 @@
-// BLE UUIDs live here because they are part of the wire protocol.
-// Update these alongside the protocol crate when the protocol spec is finalised.
-//
-// Current values are placeholders that match no real spec; the structure
-// (service + two characteristics) is the stable part.
-
 use esp32_nimble::{uuid128, BLEAdvertisementData, BLEDevice, NimBLEProperties};
 use log::info;
 
 use crate::{protocol, vibration};
 
-// ── UUIDs (update when protocol is finalised) ─────────────────────────────────
+// ── BLE UUIDs ─────────────────────────────────────────────────────────────────
 // Service
-const SVC: &str = "6b2f0001-0000-1000-8000-00805f9b34fb";
+const SVC: &str          = "6b2f0001-0000-1000-8000-00805f9b34fb";
 // Firmware version – phone READs this first to learn the protocol version
 const CHAR_FIRMWARE: &str = "6b2f0004-0000-1000-8000-00805f9b34fb";
 // Command – phone WRITEs vibration packets here
-const CHAR_COMMAND:  &str = "6b2f0002-0000-1000-8000-00805f9b34fb";
+const CHAR_COMMAND: &str  = "6b2f0002-0000-1000-8000-00805f9b34fb";
 
 pub fn start(queue: vibration::Queue) -> anyhow::Result<()> {
     let ble    = BLEDevice::take();
