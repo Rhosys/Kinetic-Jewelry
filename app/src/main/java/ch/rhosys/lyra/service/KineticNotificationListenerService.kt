@@ -3,6 +3,7 @@ package ch.rhosys.lyra.service
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
+import ch.rhosys.lyra.data.AppIconCache
 import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.data.notification.NotificationEventBus
 import ch.rhosys.lyra.domain.model.NotificationEvent
@@ -74,6 +75,14 @@ class KineticNotificationListenerService : NotificationListenerService() {
                 packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
             } catch (_: Exception) {
                 sbn.packageName
+            }
+
+            // Cache the app icon while package visibility is elevated in the listener context.
+            if (!AppIconCache.hasIcon(applicationContext, sbn.packageName)) {
+                try {
+                    val icon = packageManager.getApplicationIcon(sbn.packageName)
+                    AppIconCache.saveIcon(applicationContext, sbn.packageName, icon)
+                } catch (_: Exception) { }
             }
 
             val personIconUri = extractPersonIconUri(sbn)
