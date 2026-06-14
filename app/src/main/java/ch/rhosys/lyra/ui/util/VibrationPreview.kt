@@ -5,7 +5,6 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 
 fun previewVibration(
@@ -20,19 +19,12 @@ fun previewVibration(
             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
 
-    val timings = mode.blocks.map { it.durationMs.toLong() }.toLongArray()
-    val amplitudes =
-        mode.blocks
-            .map { block ->
-                when (block) {
-                    VibrationBlock.SHORT_BUZZ, VibrationBlock.MEDIUM_BUZZ,
-                    VibrationBlock.LONG_BUZZ, VibrationBlock.CLICK,
-                    -> 200
-                    VibrationBlock.SHORT_PAUSE, VibrationBlock.MEDIUM_PAUSE,
-                    VibrationBlock.LONG_PAUSE,
-                    -> 0
-                }
-            }.toIntArray()
+    if (!vibrator.hasVibrator()) return
 
-    vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    // createWaveform(timings, repeat) alternates off/on starting with off.
+    // Prepend 0ms so the pattern starts vibrating immediately, then each
+    // block duration follows. All VibrationMode patterns already alternate
+    // buzz→pause→buzz so the off/on assignment is always correct.
+    val timings = longArrayOf(0L) + mode.blocks.map { it.durationMs.toLong() }.toLongArray()
+    vibrator.vibrate(VibrationEffect.createWaveform(timings, -1))
 }

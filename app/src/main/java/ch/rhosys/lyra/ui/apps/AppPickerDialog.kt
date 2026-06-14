@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import ch.rhosys.lyra.data.AppIconCache
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,6 +48,7 @@ data class InstalledAppInfo(
 
 @Composable
 fun AppPickerDialog(
+    historyApps: List<Pair<String, String>> = emptyList(),
     onDismiss: () -> Unit,
     onAppSelected: (packageName: String, label: String) -> Unit,
 ) {
@@ -58,23 +60,42 @@ fun AppPickerDialog(
                 withContext(Dispatchers.IO) {
                     val pm = context.packageManager
                     val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                    pm
-                        .queryIntentActivities(intent, 0)
-                        .filter { ri ->
-                            (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-                        }.map { ri ->
-                            InstalledAppInfo(
-                                packageName = ri.activityInfo.packageName,
-                                label = ri.loadLabel(pm).toString(),
-                                icon =
-                                    try {
-                                        pm.getApplicationIcon(ri.activityInfo.packageName)
-                                    } catch (_: Exception) {
-                                        null
-                                    },
-                            )
-                        }.distinctBy { it.packageName }
-                        .sortedBy { it.label.lowercase() }
+                    val launcherApps =
+                        pm
+                            .queryIntentActivities(intent, 0)
+                            .filter { ri ->
+                                (ri.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                            }.map { ri ->
+                                val pkg = ri.activityInfo.packageName
+                                val label = ri.loadLabel(pm).toString()
+                                val icon =
+                                    AppIconCache.loadIcon(context.applicationContext, pkg)
+                                        ?: try {
+                                            pm.getApplicationIcon(pkg).also { d ->
+                                                AppIconCache.saveIcon(context.applicationContext, pkg, d)
+                                            }
+                                        } catch (_: Exception) { null }
+                                InstalledAppInfo(packageName = pkg, label = label, icon = icon)
+                            }.distinctBy { it.packageName }
+
+                    val launcherPkgs = launcherApps.map { it.packageName }.toSet()
+
+                    val historyOnly =
+                        historyApps
+                            .distinctBy { it.first }
+                            .filter { (pkg, _) -> pkg !in launcherPkgs }
+                            .map { (pkg, label) ->
+                                val icon =
+                                    AppIconCache.loadIcon(context.applicationContext, pkg)
+                                        ?: try {
+                                            pm.getApplicationIcon(pkg).also { d ->
+                                                AppIconCache.saveIcon(context.applicationContext, pkg, d)
+                                            }
+                                        } catch (_: Exception) { null }
+                                InstalledAppInfo(packageName = pkg, label = label, icon = icon)
+                            }
+
+                    (launcherApps + historyOnly).sortedBy { it.label.lowercase() }
                 }
         }
 

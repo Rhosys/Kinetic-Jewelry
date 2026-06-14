@@ -48,18 +48,21 @@ class MainActivity : ComponentActivity() {
 
     private var hasNotificationAccess by mutableStateOf(false)
     private var hasBlePermission by mutableStateOf(false)
+    private var hasPostNotificationPermission by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         hasNotificationAccess = isNotificationListenerEnabled(this)
         hasBlePermission = checkBlePermission()
+        hasPostNotificationPermission = checkPostNotificationPermission()
 
         // Re-check on every resume so revocations via Settings are reflected immediately
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 hasNotificationAccess = isNotificationListenerEnabled(this@MainActivity)
                 hasBlePermission = checkBlePermission()
+                hasPostNotificationPermission = checkPostNotificationPermission()
                 checkReEnableDevices()
             }
         }
@@ -73,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     return@KineticJewelryTheme
                 }
 
-                if (!hasNotificationAccess || !hasBlePermission) {
+                if (!hasNotificationAccess || !hasBlePermission || !hasPostNotificationPermission) {
                     SetupScreen(notificationAccessGranted = hasNotificationAccess)
                     return@KineticJewelryTheme
                 }
@@ -135,5 +138,11 @@ class MainActivity : ComponentActivity() {
         return permissions.all { perm ->
             ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
         }
+    }
+
+    private fun checkPostNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
     }
 }
