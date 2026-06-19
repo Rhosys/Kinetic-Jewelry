@@ -139,7 +139,7 @@ jobs:
       # setup-gradle reads gradle/wrapper/gradle-wrapper.properties to resolve
       # the Gradle version and downloads the wrapper JAR if it is not committed.
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Rust – round-trip vectors test
         working-directory: firmware/protocol
