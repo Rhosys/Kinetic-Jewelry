@@ -1,3 +1,5 @@
+import java.time.Instant
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -13,7 +15,7 @@ val gitCommitHash =
         .standardOutput.asText.get()
         .trim()
 
-val buildTimestamp = java.time.Instant.now().toString()
+val buildTimestamp = Instant.now().toString()
 
 android {
     namespace = "ch.rhosys.lyra"
