@@ -1,5 +1,8 @@
 # CI runs compile, lint, and unit tests on every push and MR.
-# release (manual, main only): builds signed AAB, smoke tests on emulator, deploys to Play Store.
+# release (main only): builds signed AAB, smoke tests on emulator, deploys to Play Store.
+#   - Manual: via "New pipeline" in the UI or any push to main — click play on the job.
+#   - Automatic: sync-from-github triggers it (AUTO_DEPLOY=true) once it confirms GitHub
+#     introduced real code differences. See sync-from-github below.
 #
 # workflow:rules prevents double-running when a branch has an open MR.
 #
@@ -24,6 +27,10 @@ default:
 
 .gradle-job:
   image: cimg/android:2026.03.1-node
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
   variables:
     GRADLE_USER_HOME: '$CI_PROJECT_DIR/.gradle'
     GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.caching=true'
@@ -58,7 +65,12 @@ release:
     AWS_ROLE_ARN: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitLabRunnerRole"
     GOOGLE_APPLICATION_CREDENTIALS: "/tmp/gcp-workload-identity.json"
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
+    # Auto-deploy: only set by sync-from-github after it confirms a real diff from GitHub.
+    - if: '$CI_COMMIT_BRANCH == "main" && $AUTO_DEPLOY == "true"'
+      when: on_success
+    # Otherwise main always requires a deliberate click — regardless of whether the
+    # pipeline came from a push or from "New pipeline" in the UI (source "web").
+    - if: '$CI_COMMIT_BRANCH == "main" && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api")'
       when: manual
   script:
     - set -eo pipefail
@@ -139,6 +151,11 @@ release:
   timeout: 15m
 
 # ── Sync from GitHub (scheduled only) ────────────────────────────────────────
+# Only acts when GitHub main actually has new content (skips no-op runs).
+# When it does, fast-forwards GitLab main and triggers a fresh pipeline with
+# AUTO_DEPLOY=true so the release job (above) runs without a manual click.
+# The fast-forward-only push refuses to run if GitLab main has diverged from
+# GitHub main, instead of force-overwriting unmerged GitLab-side history.
 
 sync-from-github:
   image: bitnami/git:latest
@@ -146,11 +163,30 @@ sync-from-github:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
   script:
+    - command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)
     - git remote add github https://github.com/Rhosys/Kinetic-Jewelry.git
     - git fetch github main
-    - git checkout -B sync/github github/main
+    - git fetch origin main
     - git remote set-url --push origin "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-    - git push origin sync/github --force -o merge_request.create -o merge_request.target=main -o merge_request.title="Sync from GitHub"
+    - |
+      if git diff --quiet origin/main github/main; then
+        echo "No code differences from GitHub main — nothing to sync."
+        exit 0
+      fi
+    - |
+      if ! git merge-base --is-ancestor origin/main github/main; then
+        echo "ERROR: GitLab main has commits GitHub main doesn't (diverged history)." >&2
+        echo "Refusing to overwrite — resolve manually instead of force-pushing." >&2
+        exit 1
+      fi
+    - echo "Code differences found — fast-forwarding main and triggering deploy..."
+    - git push origin github/main:refs/heads/main
+    - |
+      curl --fail --request POST \
+        --form token="${CI_JOB_TOKEN}" \
+        --form ref=main \
+        --form "variables[AUTO_DEPLOY]=true" \
+        "https://${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/trigger/pipeline"
 
 # ── Debug APK (manual, MRs only) ─────────────────────────────────────────────
 

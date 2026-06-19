@@ -51,6 +51,14 @@ fun SetupScreen(notificationAccessGranted: Boolean) {
         }
     )
 
+    val postNotifPermission = rememberMultiplePermissionsState(
+        buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    )
+
     var batteryOptIgnored by remember {
         mutableStateOf(
             (context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager)
@@ -111,6 +119,15 @@ fun SetupScreen(notificationAccessGranted: Boolean) {
             granted = blePermissions.allPermissionsGranted,
             onRequest = { blePermissions.launchMultiplePermissionRequest() },
         )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Spacer(modifier = Modifier.height(16.dp))
+            PermissionRow(
+                label = "Post Notifications",
+                granted = postNotifPermission.allPermissionsGranted,
+                onRequest = { postNotifPermission.launchMultiplePermissionRequest() },
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

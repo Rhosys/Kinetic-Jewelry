@@ -14,9 +14,14 @@ class VibrationPacketBuilder @Inject constructor() {
         val blocks = mode.blocks.filter { it.since <= firmware }
         val effective = blocks.ifEmpty { VibrationMode.SHORT_PULSE.blocks }
         return effective.chunked(16).map { chunk ->
-            val bytes = byteArrayOf(firmware.value.toByte(), 0x01, repeat.toByte()) +
-                chunk.map { it.id }.toByteArray()
-            bytes to chunk.sumOf { it.durationMs }
+            encodePacket(chunk.map { it.id.toInt() }, firmware.value, repeat) to chunk.sumOf { it.durationMs }
         }
+    }
+
+    companion object {
+        // Wire format: [firmware_version, 0x01 (Vibrate), repeat, block_ids…]
+        fun encodePacket(blockIds: List<Int>, firmwareVersion: Int, repeat: Int): ByteArray =
+            byteArrayOf(firmwareVersion.toByte(), 0x01, repeat.toByte()) +
+                blockIds.map { it.toByte() }.toByteArray()
     }
 }

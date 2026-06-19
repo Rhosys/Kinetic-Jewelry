@@ -32,7 +32,6 @@ import javax.inject.Singleton
 private val SERVICE_UUID = UUID.fromString("6b2f0001-0000-1000-8000-00805f9b34fb")
 private val COMMAND_CHAR_UUID = UUID.fromString("6b2f0002-0000-1000-8000-00805f9b34fb")
 private val FIRMWARE_CHAR_UUID = UUID.fromString("6b2f0004-0000-1000-8000-00805f9b34fb")
-private const val CONNECT_TIMEOUT_MS = 15_000L
 private const val SCAN_TIMEOUT_MS = 10_000L
 
 @SuppressLint("MissingPermission") // Permissions checked at UI layer before invoking controller
@@ -87,8 +86,14 @@ class BluetoothControllerImpl
             _scanResults.value = emptyList()
             _isScanning.value = true
             logger.info("BLE scan started")
-            bluetoothAdapter.bluetoothLeScanner?.startScan(scanCallback)
-                ?: logger.error("BLE scanner unavailable — is Bluetooth enabled?")
+            try {
+                bluetoothAdapter.bluetoothLeScanner?.startScan(scanCallback)
+                    ?: logger.error("BLE scanner unavailable — is Bluetooth enabled?")
+            } catch (e: SecurityException) {
+                logger.error("BLE scan permission denied", e)
+                _isScanning.value = false
+                return
+            }
             scanTimeoutJob?.cancel()
             scanTimeoutJob =
                 scope.launch {
@@ -100,14 +105,18 @@ class BluetoothControllerImpl
         override fun stopScan() {
             scanTimeoutJob?.cancel()
             scanTimeoutJob = null
-            bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+            try {
+                bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+            } catch (_: SecurityException) {
+                // Permission revoked — scanner already inactive
+            }
             _isScanning.value = false
             logger.info("BLE scan stopped (${_scanResults.value.size} device(s) found)")
         }
 
         override fun refreshPairedDevices() {
-            _pairedDevices.value =
-                try {
+            try {
+                _pairedDevices.value =
                     bluetoothAdapter.bondedDevices.map { device ->
                         BluetoothDeviceInfo(
                             address = device.address,
@@ -116,18 +125,19 @@ class BluetoothControllerImpl
                             connectionState = ConnectionState.DISCONNECTED,
                         )
                     }
-                } catch (_: SecurityException) {
-                    emptyList()
-                }
+            } catch (_: SecurityException) {
+                // Permission revoked at runtime — leave existing list intact
+            }
         }
 
         override suspend fun sendVibration(
             address: String,
             mode: VibrationMode,
+            timeoutMs: Long,
         ): Result<Unit> {
             logger.info("Sending vibration ($mode) to $address")
             return runCatching {
-                withTimeout(CONNECT_TIMEOUT_MS) {
+                withTimeout(timeoutMs) {
                     val events = Channel<GattEvent>(capacity = 16)
                     val callback = BleGattCallback(events)
                     val device = bluetoothAdapter.getRemoteDevice(address)

@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "KineticJewelry"
 include(":app")
+include(":wear")

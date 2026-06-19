@@ -2,6 +2,8 @@ package ch.rhosys.lyra.ui.history
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,8 +22,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import ch.rhosys.lyra.data.AppIconCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -73,10 +79,11 @@ private fun HistoryRow(
     onAdd: () -> Unit,
 ) {
     val context = LocalContext.current
-    val appIcon: Drawable? = remember(entry.packageName) {
-        try {
-            context.packageManager.getApplicationIcon(entry.packageName)
-        } catch (_: Exception) { null }
+    val appIcon by produceState<Drawable?>(null, entry.packageName) {
+        value = withContext(Dispatchers.IO) {
+            AppIconCache.loadIcon(context.applicationContext, entry.packageName)
+                ?: try { context.packageManager.getApplicationIcon(entry.packageName) } catch (_: Exception) { null }
+        }
     }
 
     val today = Calendar.getInstance().apply {
@@ -100,6 +107,21 @@ private fun HistoryRow(
                 contentDescription = entry.appLabel,
                 modifier = Modifier.size(40.dp).clip(CircleShape),
             )
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = entry.appLabel.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
 

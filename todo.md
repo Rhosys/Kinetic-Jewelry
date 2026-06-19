@@ -267,23 +267,24 @@ conventions above.
 
 ---
 
-### Kotlin protocol builder redesign 🔲
+### Kotlin protocol builder redesign ✅
 
-The Android app's `VibrationPacketBuilder.kt` is under redesign. Once the new
-protocol is finalised:
-
-1. Follow the **"How to update the protocol"** steps above
-2. Replace `buildPacket()` in `ProtocolRoundtripTest.kt` with a call to the
-   real builder instead of the raw helper
+`VibrationPacketBuilder` now exposes `companion object encodePacket(blockIds, firmwareVersion, repeat)`
+which both `buildPackets()` (production path) and `ProtocolRoundtripTest` (CI path) call.
+The test no longer has a private raw re-implementation of the wire format — any encoding
+drift in the real builder will now be caught by the roundtrip CI job.
 
 ---
 
-### BLE UUIDs — confirm or replace 🔲
+### BLE UUIDs — confirm or replace ✅
 
-Current UUIDs in `firmware/device/src/ble.rs` are placeholders that happen to
-match the old Android app. Confirm these are the agreed UUIDs for the new
-protocol or replace them. Same values must appear in the Android Bluetooth
-controller.
+UUIDs confirmed as the agreed wire-protocol values:
+- Service:         `6b2f0001-0000-1000-8000-00805f9b34fb`
+- Firmware char:   `6b2f0004-0000-1000-8000-00805f9b34fb`
+- Command char:    `6b2f0002-0000-1000-8000-00805f9b34fb`
+
+Both `firmware/device/src/ble.rs` and `BluetoothControllerImpl.kt` already use
+these values. "Placeholder" comments removed.
 
 ---
 
