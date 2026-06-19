@@ -8,7 +8,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ch.rhosys.lyra.wear"
+        applicationId = "ch.rhosys.lyra"
         minSdk = 30
         targetSdk = 35
         versionCode = 1
