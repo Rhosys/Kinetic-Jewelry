@@ -39,9 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import ch.rhosys.lyra.BuildConfig
 import ch.rhosys.lyra.data.LogLevel
 import ch.rhosys.lyra.domain.AppSettingsProvider
 import ch.rhosys.lyra.domain.model.MultiDeviceMode
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
@@ -58,6 +62,14 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         vm.refreshStatus()
         onPauseOrDispose {}
     }
+
+    val buildDate =
+        remember {
+            DateTimeFormatter
+                .ofPattern("yyyy-MM-dd HH:mm")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.parse(BuildConfig.BUILD_TIME))
+        }
 
     val scrollState = rememberScrollState()
 
@@ -225,6 +237,17 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 onCheckedChange = { vm.setAutoReEnable24h(it) },
             )
         }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        Text("Build Info", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text("Commit ${BuildConfig.GIT_COMMIT}", style = MaterialTheme.typography.bodySmall)
+        Text("Built $buildDate", style = MaterialTheme.typography.bodySmall)
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 

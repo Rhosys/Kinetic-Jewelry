@@ -7,6 +7,14 @@ plugins {
     alias(libs.plugins.room)
 }
 
+val gitCommitHash =
+    providers
+        .exec { commandLine("git", "rev-parse", "--short=8", "HEAD") }
+        .standardOutput.asText.get()
+        .trim()
+
+val buildTimestamp = java.time.Instant.now().toString()
+
 android {
     namespace = "ch.rhosys.lyra"
     compileSdk = 35
@@ -18,6 +26,9 @@ android {
         versionCode = (findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
         versionName = (findProperty("versionName") as? String) ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GIT_COMMIT", "\"$gitCommitHash\"")
+        buildConfigField("String", "BUILD_TIME", "\"$buildTimestamp\"")
     }
 
     signingConfigs {
