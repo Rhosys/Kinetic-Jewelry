@@ -1,3 +1,5 @@
+import java.time.Instant
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,14 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
 }
+
+val gitCommitHash =
+    providers
+        .exec { commandLine("git", "rev-parse", "--short=8", "HEAD") }
+        .standardOutput.asText.get()
+        .trim()
+
+val buildTimestamp = Instant.now().toString()
 
 android {
     namespace = "ch.rhosys.lyra"
@@ -18,6 +28,9 @@ android {
         versionCode = (findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
         versionName = (findProperty("versionName") as? String) ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GIT_COMMIT", "\"$gitCommitHash\"")
+        buildConfigField("String", "BUILD_TIME", "\"$buildTimestamp\"")
     }
 
     signingConfigs {
@@ -104,6 +117,9 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.posthog.android)
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
+    wearApp(project(":wear"))
 
     debugImplementation(libs.compose.ui.tooling)
 

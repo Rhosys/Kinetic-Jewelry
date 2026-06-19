@@ -33,8 +33,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ch.rhosys.lyra.data.AppIconCache
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.ui.util.previewVibration
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @Composable
@@ -69,6 +74,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
 
     if (showAppPicker) {
         AppPickerDialog(
+            historyApps = historyEntries.map { it.packageName to it.appLabel },
             onDismiss = { showAppPicker = false },
             onAppSelected = { packageName, label ->
                 vm.addApp(packageName, label)
@@ -181,14 +187,12 @@ private fun AppSection(
     onRemove: () -> Unit,
 ) {
     val context = LocalContext.current
-    val appIcon: Drawable? =
-        remember(app.packageName) {
-            try {
-                context.packageManager.getApplicationIcon(app.packageName)
-            } catch (_: Exception) {
-                null
-            }
+    val appIcon by produceState<Drawable?>(null, app.packageName) {
+        value = withContext(Dispatchers.IO) {
+            AppIconCache.loadIcon(context.applicationContext, app.packageName)
+                ?: try { context.packageManager.getApplicationIcon(app.packageName) } catch (_: Exception) { null }
         }
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -287,6 +291,7 @@ private fun VibrationModePicker(
     onModeSelected: (VibrationMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode.displayName) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -295,6 +300,7 @@ private fun VibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
+                        previewVibration(context, m)
                         onModeSelected(m)
                     },
                 )
@@ -309,6 +315,7 @@ private fun NullableVibrationModePicker(
     onModeSelected: (VibrationMode?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: "App default") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -324,6 +331,7 @@ private fun NullableVibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
+                        previewVibration(context, m)
                         onModeSelected(m)
                     },
                 )

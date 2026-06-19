@@ -40,16 +40,12 @@ pub enum ParseError {
 
 /// Decode a raw BLE characteristic write into a [`Command`].
 ///
-/// ── REPLACE THE BODY OF THIS FUNCTION when the real protocol is specified ──
-///
-/// The signature must stay the same; only the logic inside changes.
-/// `data` is the raw byte slice received from the BLE write.
+/// Wire format:
+///   byte 0  – protocol version  (must equal FIRMWARE_VERSION)
+///   byte 1  – command id        (0x01 = Vibrate)
+///   byte 2  – repeat count      (clamped to 1 if 0)
+///   byte 3… – block ids         (see decode_block; unknown ids are skipped)
 pub fn parse(data: &[u8]) -> Result<Command, ParseError> {
-    // Placeholder wire format (TBD by protocol spec):
-    //   byte 0  – protocol version
-    //   byte 1  – command id  (0x01 = Vibrate)
-    //   byte 2  – repeat count
-    //   byte 3… – block ids (see decode_block below)
     if data.len() < 3 {
         return Err(ParseError::TooShort);
     }

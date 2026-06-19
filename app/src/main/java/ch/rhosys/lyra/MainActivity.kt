@@ -1,8 +1,7 @@
-@file:OptIn(com.google.accompanist.permissions.ExperimentalPermissionsApi::class)
-
 package ch.rhosys.lyra
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -22,34 +21,49 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import ch.rhosys.lyra.domain.AppSettingsProvider
+import ch.rhosys.lyra.domain.repository.BluetoothDeviceRepository
 import ch.rhosys.lyra.ui.error.StartupErrorScreen
 import ch.rhosys.lyra.ui.navigation.AppNavHost
 import ch.rhosys.lyra.ui.navigation.Screen
 import ch.rhosys.lyra.ui.onboarding.SetupScreen
 import ch.rhosys.lyra.ui.onboarding.isNotificationListenerEnabled
 import ch.rhosys.lyra.ui.theme.KineticJewelryTheme
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var deviceRepo: BluetoothDeviceRepository
+
+    @Inject lateinit var appSettings: AppSettingsProvider
+
     private var hasNotificationAccess by mutableStateOf(false)
+    private var hasBlePermission by mutableStateOf(false)
+    private var hasPostNotificationPermission by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         hasNotificationAccess = isNotificationListenerEnabled(this)
+        hasBlePermission = checkBlePermission()
+        hasPostNotificationPermission = checkPostNotificationPermission()
 
-        // Re-check when returning from Settings
+        // Re-check on every resume so revocations via Settings are reflected immediately
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 hasNotificationAccess = isNotificationListenerEnabled(this@MainActivity)
+                hasBlePermission = checkBlePermission()
+                hasPostNotificationPermission = checkPostNotificationPermission()
+                checkReEnableDevices()
             }
         }
 
@@ -62,16 +76,7 @@ class MainActivity : ComponentActivity() {
                     return@KineticJewelryTheme
                 }
 
-                val blePermissions =
-                    rememberMultiplePermissionsState(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
-                        } else {
-                            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-                        },
-                    )
-
-                if (!hasNotificationAccess || !blePermissions.allPermissionsGranted) {
+                if (!hasNotificationAccess || !hasBlePermission || !hasPostNotificationPermission) {
                     SetupScreen(notificationAccessGranted = hasNotificationAccess)
                     return@KineticJewelryTheme
                 }
@@ -112,5 +117,32 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private suspend fun checkReEnableDevices() {
+        if (!appSettings.autoReEnable24h.first()) return
+        val now = System.currentTimeMillis()
+        deviceRepo
+            .getAll()
+            .filter { it.isCurrentlyDisabled && now >= (it.disabledUntil ?: 0) + AppSettingsProvider.AUTO_RE_ENABLE_DURATION_MS }
+            .forEach { deviceRepo.setDisabledUntil(it.address, null) }
+    }
+
+    private fun checkBlePermission(): Boolean {
+        val permissions =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+            } else {
+                listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        return permissions.all { perm ->
+            ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun checkPostNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
     }
 }
