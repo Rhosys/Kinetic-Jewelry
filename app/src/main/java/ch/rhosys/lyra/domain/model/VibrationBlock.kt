@@ -10,4 +10,5 @@ enum class VibrationBlock(val id: Byte, val durationMs: Int, val since: Protocol
     MEDIUM_PAUSE(0x05, 200, V1),
     LONG_PAUSE  (0x06, 600, V1),
     CLICK       (0x07,  40, V1),
+    EXTRA_LONG_BUZZ(0x08, 1000, V1),
 }
