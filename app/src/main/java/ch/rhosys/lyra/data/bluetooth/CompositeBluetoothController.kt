@@ -30,7 +30,8 @@ class CompositeBluetoothController
                 .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
         override val connectedDevices: StateFlow<List<BluetoothDeviceInfo>> =
-            bleController.connectedDevices
+            combine(bleController.connectedDevices, wearController.wearNodes) { ble, wear -> ble + wear }
+                .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
         override val scanResults: StateFlow<List<BluetoothDeviceInfo>> =
             bleController.scanResults
