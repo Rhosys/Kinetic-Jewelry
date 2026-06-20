@@ -39,7 +39,7 @@ class WearOsController
                             address = "$WEAR_ADDRESS_PREFIX${node.id}",
                             name = node.displayName,
                             isAlertEnabled = false,
-                            connectionState = ConnectionState.DISCONNECTED,
+                            connectionState = ConnectionState.CONNECTED,
                             deviceType = DeviceType.WEAR_OS,
                         )
                     }
