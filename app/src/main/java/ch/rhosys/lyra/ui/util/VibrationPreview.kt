@@ -19,6 +19,12 @@ private fun vibratorOf(context: Context): Vibrator =
     }
 
 private fun toWaveform(mode: VibrationMode): VibrationEffect {
+    // A single block is just a continuous buzz; createOneShot is the API meant
+    // for that and is honored consistently, whereas a 2-element createWaveform
+    // array ([0, duration]) is silently dropped by some OEM vibrator HALs.
+    if (mode.blocks.size == 1) {
+        return VibrationEffect.createOneShot(mode.blocks[0].durationMs.toLong(), VibrationEffect.DEFAULT_AMPLITUDE)
+    }
     // createWaveform(timings, repeat) alternates off/on starting with off.
     // Prepend 0ms so the pattern starts vibrating immediately, then each
     // block duration follows. All VibrationMode patterns already alternate

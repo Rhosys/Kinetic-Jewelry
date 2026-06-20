@@ -8,7 +8,8 @@
     "SHORT_PAUSE":  "0x04",
     "MEDIUM_PAUSE": "0x05",
     "LONG_PAUSE":   "0x06",
-    "CLICK":        "0x07"
+    "CLICK":        "0x07",
+    "EXTRA_LONG_BUZZ": "0x08"
   },
   "cases": [
     {
@@ -58,10 +59,10 @@
     },
     {
       "id": "escalating",
-      "description": "VibrationMode.ESCALATING — all 7 blocks in order of intensity",
-      "block_ids": [7, 4, 1, 4, 2, 4, 3],
+      "description": "VibrationMode.ESCALATING — 5 vibrations in order of intensity, the 5th twice as long as the 4th",
+      "block_ids": [7, 4, 1, 4, 2, 4, 3, 4, 8],
       "repeat": 1,
-      "bytes_hex": "01 01 01 07 04 01 04 02 04 03",
+      "bytes_hex": "01 01 01 07 04 01 04 02 04 03 04 08",
       "decoded_blocks": [
         { "id": 7, "motor_on": true,  "duration_ms":  40 },
         { "id": 4, "motor_on": false, "duration_ms":  80 },
@@ -69,7 +70,9 @@
         { "id": 4, "motor_on": false, "duration_ms":  80 },
         { "id": 2, "motor_on": true,  "duration_ms": 250 },
         { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 3, "motor_on": true,  "duration_ms": 500 }
+        { "id": 3, "motor_on": true,  "duration_ms": 500 },
+        { "id": 4, "motor_on": false, "duration_ms":  80 },
+        { "id": 8, "motor_on": true,  "duration_ms": 1000 }
       ]
     },
     {
@@ -121,9 +124,9 @@
     {
       "id": "all-block-types",
       "description": "Every defined block ID appears once — validates full decode table",
-      "block_ids": [1, 2, 3, 4, 5, 6, 7],
+      "block_ids": [1, 2, 3, 4, 5, 6, 7, 8],
       "repeat": 1,
-      "bytes_hex": "01 01 01 01 02 03 04 05 06 07",
+      "bytes_hex": "01 01 01 01 02 03 04 05 06 07 08",
       "decoded_blocks": [
         { "id": 1, "motor_on": true,  "duration_ms": 100 },
         { "id": 2, "motor_on": true,  "duration_ms": 250 },
@@ -131,7 +134,8 @@
         { "id": 4, "motor_on": false, "duration_ms":  80 },
         { "id": 5, "motor_on": false, "duration_ms": 200 },
         { "id": 6, "motor_on": false, "duration_ms": 600 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 }
+        { "id": 7, "motor_on": true,  "duration_ms":  40 },
+        { "id": 8, "motor_on": true,  "duration_ms": 1000 }
       ]
     }
   ]

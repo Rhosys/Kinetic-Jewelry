@@ -79,6 +79,7 @@ pub fn decode_block(id: u8) -> Option<VibBlock> {
         0x05 => (false, 200),   // medium pause
         0x06 => (false, 600),   // long pause
         0x07 => (true,   40),   // click
+        0x08 => (true, 1000),   // extra-long buzz (escalating finale)
         _    => return None,
     };
     Some(VibBlock { motor_on, duration_ms })
@@ -155,6 +156,7 @@ mod tests {
         assert_eq!(decode_block(0x05), Some(pause(200)));  // medium pause
         assert_eq!(decode_block(0x06), Some(pause(600)));  // long pause
         assert_eq!(decode_block(0x07), Some(buzz(40)));    // click
+        assert_eq!(decode_block(0x08), Some(buzz(1000)));  // extra-long buzz
         assert_eq!(decode_block(0x00), None);
         assert_eq!(decode_block(0xFF), None);
     }
@@ -164,7 +166,7 @@ mod tests {
         for id in [0x04u8, 0x05, 0x06] {
             assert!(!decode_block(id).unwrap().motor_on, "block {id:#x} should be off");
         }
-        for id in [0x01u8, 0x02, 0x03, 0x07] {
+        for id in [0x01u8, 0x02, 0x03, 0x07, 0x08] {
             assert!(decode_block(id).unwrap().motor_on, "block {id:#x} should be on");
         }
     }

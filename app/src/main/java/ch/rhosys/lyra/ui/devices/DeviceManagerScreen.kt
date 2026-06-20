@@ -30,7 +30,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -286,17 +285,11 @@ private fun ConnectionStatusChip(state: ConnectionState) {
             ConnectionState.ERROR -> Triple(Icons.Default.Warning, MaterialTheme.colorScheme.error, "Error")
             ConnectionState.DISCONNECTED -> Triple(Icons.Default.Warning, ConnectingColor, "Not Connected")
         }
-    SuggestionChip(
-        onClick = {},
-        label = { Text(label) },
-        icon = {
-            Icon(
-                icon,
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size(SuggestionChipDefaults.IconSize),
-            )
-        },
+    Icon(
+        icon,
+        contentDescription = label,
+        tint = tint,
+        modifier = Modifier.size(SuggestionChipDefaults.IconSize).padding(horizontal = 4.dp),
     )
 }
 

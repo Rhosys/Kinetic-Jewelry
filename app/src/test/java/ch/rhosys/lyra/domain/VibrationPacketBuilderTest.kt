@@ -130,9 +130,9 @@ class VibrationPacketBuilderTest {
     }
 
     @Test
-    fun `ESCALATING single packet is 3 header + 7 block bytes`() {
+    fun `ESCALATING single packet is 3 header + 9 block bytes`() {
         val packets = builder.buildPackets(VibrationMode.ESCALATING, ProtocolVersion.V1)
         assertEquals(1, packets.size)
-        assertEquals(10, packets[0].first.size)  // 3 + 7
+        assertEquals(12, packets[0].first.size)  // 3 + 9
     }
 }
