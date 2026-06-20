@@ -18,17 +18,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.ui.util.previewVibrationTwice
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @Composable
 fun VibrationModeScreen(vm: VibrationModeViewModel = hiltViewModel()) {
     val alertDevices by vm.alertDevices.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         vm.snackbar.collectLatest { msg ->
@@ -43,7 +49,10 @@ fun VibrationModeScreen(vm: VibrationModeViewModel = hiltViewModel()) {
             items(VibrationMode.entries) { mode ->
                 ModeCard(
                     mode = mode,
-                    onTest = { vm.testMode(mode) },
+                    onTest = {
+                        scope.launch { previewVibrationTwice(context, mode) }
+                        vm.testMode(mode)
+                    },
                 )
             }
         }

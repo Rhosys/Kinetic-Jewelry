@@ -260,8 +260,8 @@ async fn test_04_single_block() -> Result<()> {
         Err(e) => return Err(e),
     };
 
-    // [version=1, cmd=vibrate, repeat=1, block=short_buzz(100ms)]
-    h.write_command(&[0x01, 0x01, 0x01, 0x01]).await?;
+    // [version=1, cmd=vibrate, repeat=1, block=short_buzz(100ms) packed alone]
+    h.write_command(&[0x01, 0x01, 0x01, 0x20]).await?;
 
     assert!(
         wait_for_idle(&h.queue, Duration::from_secs(2)),
@@ -288,7 +288,7 @@ async fn test_05_repeat() -> Result<()> {
     };
 
     // short_buzz × 3
-    h.write_command(&[0x01, 0x01, 0x03, 0x01]).await?;
+    h.write_command(&[0x01, 0x01, 0x03, 0x20]).await?;
 
     assert!(wait_for_idle(&h.queue, Duration::from_secs(3)), "queue did not drain");
     tokio::time::sleep(Duration::from_millis(30)).await;
@@ -320,8 +320,8 @@ async fn test_06_pause_block() -> Result<()> {
         Err(e) => return Err(e),
     };
 
-    // [version=1, cmd=vibrate, repeat=1, block=short_pause(80ms)]
-    h.write_command(&[0x01, 0x01, 0x01, 0x04]).await?;
+    // [version=1, cmd=vibrate, repeat=1, block=short_pause(80ms) packed alone]
+    h.write_command(&[0x01, 0x01, 0x01, 0xA0]).await?;
 
     assert!(wait_for_idle(&h.queue, Duration::from_secs(2)), "queue did not drain");
     tokio::time::sleep(Duration::from_millis(30)).await;
@@ -343,8 +343,8 @@ async fn test_07_mixed_sequence() -> Result<()> {
         Err(e) => return Err(e),
     };
 
-    // [v=1, cmd=vibrate, repeat=1, short_buzz(100), short_pause(80), long_buzz(500)]
-    h.write_command(&[0x01, 0x01, 0x01, 0x01, 0x04, 0x03]).await?;
+    // [v=1, cmd=vibrate, repeat=1, short_buzz(100)+short_pause(80) packed, long_buzz(500) packed alone]
+    h.write_command(&[0x01, 0x01, 0x01, 0x2A, 0x40]).await?;
 
     assert!(
         wait_for_idle(&h.queue, Duration::from_secs(4)),
@@ -381,8 +381,8 @@ async fn test_08_queue_accumulation() -> Result<()> {
     };
 
     // Two rapid writes: short_buzz + click
-    h.write_command(&[0x01, 0x01, 0x01, 0x01]).await?; // 100 ms
-    h.write_command(&[0x01, 0x01, 0x01, 0x07]).await?; // 40 ms
+    h.write_command(&[0x01, 0x01, 0x01, 0x20]).await?; // 100 ms
+    h.write_command(&[0x01, 0x01, 0x01, 0x10]).await?; // 40 ms
 
     assert!(
         wait_for_idle(&h.queue, Duration::from_secs(3)),
@@ -411,8 +411,8 @@ async fn test_09_unknown_block_ids_skipped() -> Result<()> {
         Err(e) => return Err(e),
     };
 
-    // short_buzz(01) + unknown(FF) + long_buzz(03) → only two buzz blocks execute
-    h.write_command(&[0x01, 0x01, 0x01, 0x01, 0xFF, 0x03]).await?;
+    // short_buzz(0x2) + unknown nibble(0xF) packed, long_buzz(0x4) packed alone → only two buzz blocks execute
+    h.write_command(&[0x01, 0x01, 0x01, 0x2F, 0x40]).await?;
 
     assert!(wait_for_idle(&h.queue, Duration::from_secs(3)), "queue did not drain");
     tokio::time::sleep(Duration::from_millis(30)).await;
@@ -438,7 +438,7 @@ async fn test_10_wrong_version_rejected() -> Result<()> {
     };
 
     // Version 2 — device runs version 1 → should be rejected
-    h.write_command(&[0x02, 0x01, 0x01, 0x01]).await.ok(); // may return GATT error
+    h.write_command(&[0x02, 0x01, 0x01, 0x20]).await.ok(); // may return GATT error
 
     // Give the vibration thread time to do anything (it should do nothing)
     tokio::time::sleep(Duration::from_millis(200)).await;
@@ -466,7 +466,7 @@ async fn test_11_unknown_command_rejected() -> Result<()> {
     };
 
     // Command 0x42 is not defined
-    h.write_command(&[0x01, 0x42, 0x01, 0x01]).await.ok();
+    h.write_command(&[0x01, 0x42, 0x01, 0x20]).await.ok();
 
     tokio::time::sleep(Duration::from_millis(200)).await;
 
@@ -529,7 +529,7 @@ async fn test_13_mutex_not_held_across_sleep() -> Result<()> {
     };
 
     // Enqueue a long buzz (500 ms execution time).
-    h.write_command(&[0x01, 0x01, 0x01, 0x03]).await?;
+    h.write_command(&[0x01, 0x01, 0x01, 0x40]).await?;
 
     // Wait 50 ms — vibration is now in progress holding the motor GPIO high.
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -537,7 +537,7 @@ async fn test_13_mutex_not_held_across_sleep() -> Result<()> {
     // Immediately write a second packet. If the mutex is held across the
     // 500 ms sleep, this enqueue would block until the buzz finishes.
     let t0 = Instant::now();
-    h.write_command(&[0x01, 0x01, 0x01, 0x07]).await?; // click (40 ms)
+    h.write_command(&[0x01, 0x01, 0x01, 0x10]).await?; // click (40 ms)
     let write_latency = t0.elapsed();
 
     // Enqueue should return in microseconds; allow up to 250 ms for scheduling jitter.
