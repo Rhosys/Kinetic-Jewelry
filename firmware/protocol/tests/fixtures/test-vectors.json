@@ -1,141 +1,132 @@
 {
   "firmware_version": 1,
-  "description": "Canonical wire-format test vectors. Both the Kotlin builder and the Rust parser must agree on every case. Update this file when the protocol changes — CI will catch any side that doesn't follow.",
+  "description": "Canonical wire-format test vectors. Both the Kotlin builder and the Rust parser must agree on every case. Block ids are 4 bits, packed two per payload byte (high nibble first); a 0x0 nibble pads an odd-length sequence. Update this file when the protocol changes — CI will catch any side that doesn't follow.",
   "block_ids": {
-    "SHORT_BUZZ":   "0x01",
-    "MEDIUM_BUZZ":  "0x02",
-    "LONG_BUZZ":    "0x03",
-    "SHORT_PAUSE":  "0x04",
-    "MEDIUM_PAUSE": "0x05",
-    "LONG_PAUSE":   "0x06",
-    "CLICK":        "0x07",
-    "EXTRA_LONG_BUZZ": "0x08"
+    "CLICK":           "0x1",
+    "SHORT_BUZZ":      "0x2",
+    "MEDIUM_BUZZ":     "0x3",
+    "LONG_BUZZ":       "0x4",
+    "EXTRA_LONG_BUZZ": "0x5",
+    "SHORT_PAUSE":     "0xA",
+    "MEDIUM_PAUSE":    "0xB",
+    "LONG_PAUSE":      "0xC"
   },
   "cases": [
     {
       "id": "short-pulse",
-      "description": "VibrationMode.SHORT_PULSE — single short buzz",
-      "block_ids": [1],
+      "description": "VibrationMode.SHORT_PULSE — single short buzz, packed alone in one byte",
+      "block_ids": [2],
       "repeat": 1,
-      "bytes_hex": "01 01 01 01",
+      "bytes_hex": "01 01 01 20",
       "decoded_blocks": [
-        { "id": 1, "motor_on": true, "duration_ms": 100 }
+        { "id": 2, "motor_on": true, "duration_ms": 100 }
       ]
     },
     {
       "id": "long-pulse",
-      "description": "VibrationMode.LONG_PULSE — single long buzz",
-      "block_ids": [3],
+      "description": "VibrationMode.LONG_PULSE — single long buzz, packed alone in one byte",
+      "block_ids": [4],
       "repeat": 1,
-      "bytes_hex": "01 01 01 03",
+      "bytes_hex": "01 01 01 40",
       "decoded_blocks": [
-        { "id": 3, "motor_on": true, "duration_ms": 500 }
+        { "id": 4, "motor_on": true, "duration_ms": 500 }
       ]
     },
     {
       "id": "double-tap",
       "description": "VibrationMode.DOUBLE_TAP — click, short pause, click",
-      "block_ids": [7, 4, 7],
+      "block_ids": [1, 10, 1],
       "repeat": 1,
-      "bytes_hex": "01 01 01 07 04 07",
+      "bytes_hex": "01 01 01 1A 10",
       "decoded_blocks": [
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 }
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 }
       ]
     },
     {
       "id": "heartbeat",
-      "description": "VibrationMode.HEARTBEAT — short buzz, short pause, medium buzz, long pause",
-      "block_ids": [1, 4, 2, 6],
+      "description": "VibrationMode.HEARTBEAT excerpt — short buzz, short pause, medium buzz, long pause",
+      "block_ids": [2, 10, 3, 12],
       "repeat": 1,
-      "bytes_hex": "01 01 01 01 04 02 06",
+      "bytes_hex": "01 01 01 2A 3C",
       "decoded_blocks": [
-        { "id": 1, "motor_on": true,  "duration_ms": 100 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 2, "motor_on": true,  "duration_ms": 250 },
-        { "id": 6, "motor_on": false, "duration_ms": 600 }
+        { "id": 2,  "motor_on": true,  "duration_ms": 100 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 3,  "motor_on": true,  "duration_ms": 250 },
+        { "id": 12, "motor_on": false, "duration_ms": 600 }
       ]
     },
     {
       "id": "escalating",
       "description": "VibrationMode.ESCALATING — 5 vibrations in order of intensity, the 5th twice as long as the 4th",
-      "block_ids": [7, 4, 1, 4, 2, 4, 3, 4, 8],
+      "block_ids": [1, 10, 2, 10, 3, 10, 4, 10, 5],
       "repeat": 1,
-      "bytes_hex": "01 01 01 07 04 01 04 02 04 03 04 08",
+      "bytes_hex": "01 01 01 1A 2A 3A 4A 50",
       "decoded_blocks": [
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 1, "motor_on": true,  "duration_ms": 100 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 2, "motor_on": true,  "duration_ms": 250 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 3, "motor_on": true,  "duration_ms": 500 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 8, "motor_on": true,  "duration_ms": 1000 }
+        { "id": 1,  "motor_on": true,  "duration_ms":   40 },
+        { "id": 10, "motor_on": false, "duration_ms":   80 },
+        { "id": 2,  "motor_on": true,  "duration_ms":  100 },
+        { "id": 10, "motor_on": false, "duration_ms":   80 },
+        { "id": 3,  "motor_on": true,  "duration_ms":  250 },
+        { "id": 10, "motor_on": false, "duration_ms":   80 },
+        { "id": 4,  "motor_on": true,  "duration_ms":  500 },
+        { "id": 10, "motor_on": false, "duration_ms":   80 },
+        { "id": 5,  "motor_on": true,  "duration_ms": 1000 }
       ]
     },
     {
-      "id": "sos-packet-1",
-      "description": "VibrationMode.SOS chunk 1 — first 16 blocks (S··· O——— S···)",
-      "block_ids": [7, 4, 7, 4, 7, 5, 1, 4, 1, 4, 1, 5, 7, 4, 7, 4],
+      "id": "sos",
+      "description": "VibrationMode.SOS — all 18 blocks (S··· O——— S···) now fit in a single packed packet",
+      "block_ids": [1, 10, 1, 10, 1, 11, 2, 10, 2, 10, 2, 11, 1, 10, 1, 10, 1, 12],
       "repeat": 1,
-      "bytes_hex": "01 01 01 07 04 07 04 07 05 01 04 01 04 01 05 07 04 07 04",
+      "bytes_hex": "01 01 01 1A 1A 1B 2A 2A 2B 1A 1A 1C",
       "decoded_blocks": [
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 5, "motor_on": false, "duration_ms": 200 },
-        { "id": 1, "motor_on": true,  "duration_ms": 100 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 1, "motor_on": true,  "duration_ms": 100 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 1, "motor_on": true,  "duration_ms": 100 },
-        { "id": 5, "motor_on": false, "duration_ms": 200 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 }
-      ]
-    },
-    {
-      "id": "sos-packet-2",
-      "description": "VibrationMode.SOS chunk 2 — remaining 2 blocks (final click + long pause)",
-      "block_ids": [7, 6],
-      "repeat": 1,
-      "bytes_hex": "01 01 01 07 06",
-      "decoded_blocks": [
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 6, "motor_on": false, "duration_ms": 600 }
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 11, "motor_on": false, "duration_ms": 200 },
+        { "id": 2,  "motor_on": true,  "duration_ms": 100 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 2,  "motor_on": true,  "duration_ms": 100 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 2,  "motor_on": true,  "duration_ms": 100 },
+        { "id": 11, "motor_on": false, "duration_ms": 200 },
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 10, "motor_on": false, "duration_ms":  80 },
+        { "id": 1,  "motor_on": true,  "duration_ms":  40 },
+        { "id": 12, "motor_on": false, "duration_ms": 600 }
       ]
     },
     {
       "id": "repeat-count",
       "description": "Repeat byte is encoded as byte 2 — firmware executes the blocks N times",
-      "block_ids": [7],
+      "block_ids": [1],
       "repeat": 3,
-      "bytes_hex": "01 01 03 07",
+      "bytes_hex": "01 01 03 10",
       "decoded_blocks": [
-        { "id": 7, "motor_on": true, "duration_ms": 40 }
+        { "id": 1, "motor_on": true, "duration_ms": 40 }
       ]
     },
     {
       "id": "all-block-types",
       "description": "Every defined block ID appears once — validates full decode table",
-      "block_ids": [1, 2, 3, 4, 5, 6, 7, 8],
+      "block_ids": [1, 2, 3, 4, 5, 10, 11, 12],
       "repeat": 1,
-      "bytes_hex": "01 01 01 01 02 03 04 05 06 07 08",
+      "bytes_hex": "01 01 01 12 34 5A BC",
       "decoded_blocks": [
-        { "id": 1, "motor_on": true,  "duration_ms": 100 },
-        { "id": 2, "motor_on": true,  "duration_ms": 250 },
-        { "id": 3, "motor_on": true,  "duration_ms": 500 },
-        { "id": 4, "motor_on": false, "duration_ms":  80 },
-        { "id": 5, "motor_on": false, "duration_ms": 200 },
-        { "id": 6, "motor_on": false, "duration_ms": 600 },
-        { "id": 7, "motor_on": true,  "duration_ms":  40 },
-        { "id": 8, "motor_on": true,  "duration_ms": 1000 }
+        { "id": 1,  "motor_on": true,  "duration_ms":   40 },
+        { "id": 2,  "motor_on": true,  "duration_ms":  100 },
+        { "id": 3,  "motor_on": true,  "duration_ms":  250 },
+        { "id": 4,  "motor_on": true,  "duration_ms":  500 },
+        { "id": 5,  "motor_on": true,  "duration_ms": 1000 },
+        { "id": 10, "motor_on": false, "duration_ms":   80 },
+        { "id": 11, "motor_on": false, "duration_ms":  200 },
+        { "id": 12, "motor_on": false, "duration_ms":  600 }
       ]
     }
   ]
