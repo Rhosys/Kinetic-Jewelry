@@ -8,10 +8,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ContactFilterDao {
-    @Query("SELECT * FROM contact_filters WHERE packageName = :packageName ORDER BY contactName ASC")
+    @Query("SELECT * FROM contact_filters WHERE packageName = :packageName ORDER BY contactName COLLATE NOCASE ASC")
     fun observeByApp(packageName: String): Flow<List<ContactFilterEntity>>
 
-    @Query("SELECT * FROM contact_filters WHERE packageName = :packageName ORDER BY contactName ASC")
+    @Query("SELECT * FROM contact_filters WHERE packageName = :packageName ORDER BY contactName COLLATE NOCASE ASC")
     suspend fun getAllByApp(packageName: String): List<ContactFilterEntity>
 
     @Query("""

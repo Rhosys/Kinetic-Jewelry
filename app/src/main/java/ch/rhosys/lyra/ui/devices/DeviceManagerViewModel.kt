@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,7 +32,7 @@ class DeviceManagerViewModel
             ) { dbDevices, connected ->
                 dbDevices.map { d ->
                     connected.firstOrNull { it.address == d.address } ?: d
-                }
+                }.sortedBy { it.name.lowercase() }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         val pairedDevices: StateFlow<List<BluetoothDeviceInfo>> =
@@ -40,11 +41,13 @@ class DeviceManagerViewModel
                 deviceRepo.observeAlertEnabled(),
             ) { paired, alertEnabled ->
                 val alertAddresses = alertEnabled.map { it.address }.toSet()
-                paired.filter { it.address !in alertAddresses }
+                paired.filter { it.address !in alertAddresses }.sortedBy { it.name.lowercase() }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         val scanResults: StateFlow<List<BluetoothDeviceInfo>> =
-            bluetoothController.scanResults.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            bluetoothController.scanResults
+                .map { results -> results.sortedBy { it.name.lowercase() } }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         val isScanning: StateFlow<Boolean> =
             bluetoothController.isScanning.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
