@@ -1,6 +1,7 @@
 package ch.rhosys.lyra.domain
 
 import ch.rhosys.lyra.domain.model.ProtocolVersion
+import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import javax.inject.Inject
 
@@ -10,9 +11,15 @@ class VibrationPacketBuilder @Inject constructor() {
         mode: VibrationMode,
         firmware: ProtocolVersion,
         repeat: Int = 1,
+    ): List<Pair<ByteArray, Int>> = buildPackets(mode.blocks, firmware, repeat)
+
+    fun buildPackets(
+        blocks: List<VibrationBlock>,
+        firmware: ProtocolVersion,
+        repeat: Int = 1,
     ): List<Pair<ByteArray, Int>> {
-        val blocks = mode.blocks.filter { it.since <= firmware }
-        val effective = blocks.ifEmpty { VibrationMode.SHORT_PULSE.blocks }
+        val filtered = blocks.filter { it.since <= firmware }
+        val effective = filtered.ifEmpty { VibrationMode.SHORT_PULSE.blocks }
         return effective.chunked(MAX_BLOCKS_PER_PACKET).map { chunk ->
             encodePacket(chunk.map { it.id.toInt() }, firmware.value, repeat) to chunk.sumOf { it.durationMs }
         }

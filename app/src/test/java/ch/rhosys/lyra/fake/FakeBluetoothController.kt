@@ -2,6 +2,7 @@ package ch.rhosys.lyra.fake
 
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
+import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,18 @@ class FakeBluetoothController : BluetoothController {
         timeoutMs: Long,
     ): Result<Unit> {
         sentCommands += VibrationCommand(address, mode, System.currentTimeMillis())
+        return Result.success(Unit)
+    }
+
+    val sentRawCommands = mutableListOf<List<VibrationBlock>>()
+
+    override suspend fun sendRawVibration(
+        address: String,
+        blocks: List<VibrationBlock>,
+        repeat: Int,
+        timeoutMs: Long,
+    ): Result<Unit> {
+        sentRawCommands += blocks
         return Result.success(Unit)
     }
 
