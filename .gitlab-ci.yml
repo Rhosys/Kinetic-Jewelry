@@ -1,13 +1,26 @@
 # CI runs compile, lint, and unit tests on every push and MR.
 # release (main only): builds signed AAB, smoke tests on emulator, deploys to Play Store.
-#   - Manual: via "New pipeline" in the UI or any push to main — click play on the job.
-#   - Automatic: sync-from-github triggers it (AUTO_DEPLOY=true) once it confirms GitHub
-#     introduced real code differences. See sync-from-github below.
+#   - Automatic (current default): AUTO_DEPLOY="true" below means every push to main
+#     deploys without a manual click.
+#   - Manual fallback: if AUTO_DEPLOY is ever set back to "false", main pushes require
+#     clicking play on the job (via push, "New pipeline" in the UI, or the API).
+#   - sync-from-github also explicitly sets AUTO_DEPLOY=true when it triggers a pipeline
+#     after pulling in real GitHub changes. See sync-from-github below.
 #
 # workflow:rules prevents double-running when a branch has an open MR.
 #
 # Secrets/credentials in deployment/ — no CI variables needed except AWS_ACCOUNT_ID:
 #   android-upload-signing.json        keystore (base64 PKCS12) + KMS-encrypted password
+
+# AUTO_DEPLOY defaults to true: for now, every push to main should deploy
+# automatically without a manual click. We're still on version 1, the app
+# isn't live yet, and every change merged to main is a real, intentional
+# change that's meant to go out — there's no reason to gate it behind a
+# manual step. Flip this back to "false" once we want a deliberate release
+# gate again (e.g. once we're shipping to real users and want control over
+# release timing).
+variables:
+  AUTO_DEPLOY: "true"
 
 workflow:
   rules:
@@ -65,11 +78,14 @@ release:
     AWS_ROLE_ARN: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitLabRunnerRole"
     GOOGLE_APPLICATION_CREDENTIALS: "/tmp/gcp-workload-identity.json"
   rules:
-    # Auto-deploy: only set by sync-from-github after it confirms a real diff from GitHub.
+    # Auto-deploy: AUTO_DEPLOY defaults to "true" (see top of file), so this fires
+    # on every push to main for now. sync-from-github also sets it explicitly when
+    # triggering a pipeline, which stays harmless if the default ever changes.
     - if: '$CI_COMMIT_BRANCH == "main" && $AUTO_DEPLOY == "true"'
       when: on_success
-    # Otherwise main always requires a deliberate click — regardless of whether the
-    # pipeline came from a push or from "New pipeline" in the UI (source "web").
+    # Fallback if AUTO_DEPLOY is ever turned off: main still requires a deliberate
+    # click — regardless of whether the pipeline came from a push or "New pipeline"
+    # in the UI (source "web").
     - if: '$CI_COMMIT_BRANCH == "main" && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api")'
       when: manual
   script:
