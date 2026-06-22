@@ -152,10 +152,9 @@ release:
 
 # ── Sync from GitHub (scheduled only) ────────────────────────────────────────
 # Only acts when GitHub main actually has new content (skips no-op runs).
-# When it does, fast-forwards GitLab main and triggers a fresh pipeline with
-# AUTO_DEPLOY=true so the release job (above) runs without a manual click.
-# The fast-forward-only push refuses to run if GitLab main has diverged from
-# GitHub main, instead of force-overwriting unmerged GitLab-side history.
+# Merges GitHub main into GitLab main (handles diverged histories), then
+# triggers a fresh pipeline with AUTO_DEPLOY=true so the release job runs
+# without a manual click.
 
 sync-from-github:
   image: bitnami/git:latest
@@ -163,6 +162,7 @@ sync-from-github:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
   script:
+    - set -eo pipefail
     - command -v curl >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq curl)
     - git remote add github https://github.com/Rhosys/Kinetic-Jewelry.git
     - git fetch github main
@@ -173,14 +173,9 @@ sync-from-github:
         echo "No code differences from GitHub main — nothing to sync."
         exit 0
       fi
-    - |
-      if ! git merge-base --is-ancestor origin/main github/main; then
-        echo "ERROR: GitLab main has commits GitHub main doesn't (diverged history)." >&2
-        echo "Refusing to overwrite — resolve manually instead of force-pushing." >&2
-        exit 1
-      fi
-    - echo "Code differences found — fast-forwarding main and triggering deploy..."
-    - git push origin github/main:refs/heads/main
+    - git checkout -B main origin/main
+    - git -c user.email="ci@rhosys.ch" -c user.name="GitLab CI" merge github/main --no-edit
+    - git push origin main
     - |
       curl --fail --request POST \
         --form token="${CI_JOB_TOKEN}" \
