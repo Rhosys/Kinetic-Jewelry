@@ -30,11 +30,12 @@ class VibrationPacketBuilderTest {
     }
 
     @Test
-    fun `packet body contains block IDs after header`() {
+    fun `packet body contains packed block IDs after header`() {
         val packets = builder.buildPackets(VibrationMode.SHORT_PULSE, ProtocolVersion.V1)
         val bytes = packets[0].first
-        assertEquals(4, bytes.size)  // 3-byte header + 1 block
-        assertEquals(VibrationBlock.SHORT_BUZZ.id, bytes[3])
+        assertEquals(4, bytes.size)  // 3-byte header + 1 packed byte (single nibble + pad)
+        val expectedByte = (VibrationBlock.SHORT_BUZZ.id.toInt() shl 4).toByte()
+        assertEquals(expectedByte, bytes[3])
     }
 
     @Test
@@ -51,34 +52,29 @@ class VibrationPacketBuilderTest {
         assertEquals(1.toByte(), packets[0].first[2])
     }
 
-    // ── Multi-packet (SOS) ───────────────────────────────────────────────────
+    // ── Single-packet (SOS) ──────────────────────────────────────────────────
 
     @Test
-    fun `SOS produces two packets`() {
+    fun `SOS produces one packet`() {
         val packets = builder.buildPackets(VibrationMode.SOS, ProtocolVersion.V1)
-        assertEquals(2, packets.size)
+        assertEquals(1, packets.size)
     }
 
     @Test
-    fun `SOS first packet contains first 16 block IDs`() {
+    fun `SOS packet contains all 18 block IDs packed two per byte`() {
         val packets = builder.buildPackets(VibrationMode.SOS, ProtocolVersion.V1)
-        val expectedIds = VibrationMode.SOS.blocks.take(16).map { it.id }.toByteArray()
-        val actualIds = packets[0].first.drop(3).toByteArray()
-        assertArrayEquals(expectedIds, actualIds)
+        val expectedIds = VibrationMode.SOS.blocks.map { it.id.toInt() }
+        val expectedPacked = expectedIds.chunked(2).map { pair ->
+            ((pair[0] shl 4) or pair.getOrElse(1) { 0 }).toByte()
+        }
+        val actualPacked = packets[0].first.drop(3).toByteArray()
+        assertArrayEquals(expectedPacked.toByteArray(), actualPacked)
     }
 
     @Test
-    fun `SOS second packet contains remaining 2 block IDs`() {
+    fun `SOS packet delay matches sum of all block durations`() {
         val packets = builder.buildPackets(VibrationMode.SOS, ProtocolVersion.V1)
-        val expectedIds = VibrationMode.SOS.blocks.drop(16).map { it.id }.toByteArray()
-        val actualIds = packets[1].first.drop(3).toByteArray()
-        assertArrayEquals(expectedIds, actualIds)
-    }
-
-    @Test
-    fun `SOS first packet delay matches its block durations`() {
-        val packets = builder.buildPackets(VibrationMode.SOS, ProtocolVersion.V1)
-        val expectedDelay = VibrationMode.SOS.blocks.take(16).sumOf { it.durationMs }
+        val expectedDelay = VibrationMode.SOS.blocks.sumOf { it.durationMs }
         assertEquals(expectedDelay, packets[0].second)
     }
 
@@ -100,9 +96,13 @@ class VibrationPacketBuilderTest {
     fun `all V1 blocks pass through on V1 firmware`() {
         // Every V1 block should survive when firmware is V1
         val packets = builder.buildPackets(VibrationMode.ESCALATING, ProtocolVersion.V1)
-        val allIds = packets.flatMap { (bytes, _) -> bytes.drop(3).map { it } }
+        val packedBytes = packets.flatMap { (bytes, _) -> bytes.drop(3) }
+        val unpackedIds = packedBytes.flatMap { byte ->
+            val unsigned = byte.toInt() and 0xFF
+            listOf((unsigned shr 4).toByte(), (unsigned and 0x0F).toByte())
+        }.filter { it != 0.toByte() }
         val expectedIds = VibrationMode.ESCALATING.blocks.map { it.id }
-        assertEquals(expectedIds, allIds)
+        assertEquals(expectedIds, unpackedIds)
     }
 
     // ── Fallback behaviour ───────────────────────────────────────────────────
@@ -130,9 +130,9 @@ class VibrationPacketBuilderTest {
     }
 
     @Test
-    fun `ESCALATING single packet is 3 header + 7 block bytes`() {
+    fun `ESCALATING single packet is 3 header + 5 packed bytes`() {
         val packets = builder.buildPackets(VibrationMode.ESCALATING, ProtocolVersion.V1)
         assertEquals(1, packets.size)
-        assertEquals(10, packets[0].first.size)  // 3 + 7
+        assertEquals(8, packets[0].first.size)  // 3 + ceil(9/2)
     }
 }

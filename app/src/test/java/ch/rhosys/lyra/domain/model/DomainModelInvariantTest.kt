@@ -124,19 +124,11 @@ class DomainModelInvariantTest {
     }
 
     @Test
-    fun `SOS blocks split into exactly two packets of at most 16 blocks`() {
-        val chunks = VibrationMode.SOS.blocks.chunked(16)
-        assertEquals(2, chunks.size)
-        assertTrue(chunks[0].size <= 16)
-        assertTrue(chunks[1].size <= 16)
-    }
-
-    @Test
-    fun `all other modes fit in a single packet`() {
-        VibrationMode.entries.filter { it != VibrationMode.SOS }.forEach { mode ->
+    fun `every mode fits in a single 32-block packet`() {
+        VibrationMode.entries.forEach { mode ->
             assertTrue(
-                "${mode.name} must fit in a single 16-block packet",
-                mode.blocks.size <= 16,
+                "${mode.name} must fit in a single 32-block packet",
+                mode.blocks.size <= 32,
             )
         }
     }
