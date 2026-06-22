@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AppFilterDao {
-    @Query("SELECT * FROM app_filters ORDER BY appLabel ASC")
+    @Query("SELECT * FROM app_filters ORDER BY appLabel COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<AppFilterEntity>>
 
     @Query("SELECT * FROM app_filters WHERE packageName = :packageName LIMIT 1")
