@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -130,7 +131,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
                         app = app,
                         contacts = contacts,
                         onContactLevelChange = { vm.setContactLevelEnabled(app, it) },
-                        onContactWatchedChange = { contact, watched -> vm.setContactWatched(contact, watched) },
+                        onContactRemove = { contact -> vm.removeContact(contact) },
                         onVibrationModeChange = { vm.setAppVibrationMode(app.packageName, it) },
                         onContactVibrationModeChange = { contact, mode -> vm.setContactVibrationMode(contact, mode) },
                         onRemove = { vm.removeApp(app.packageName) },
@@ -181,7 +182,7 @@ private fun AppSection(
     app: AppFilter,
     contacts: List<ContactFilter>,
     onContactLevelChange: (Boolean) -> Unit,
-    onContactWatchedChange: (ContactFilter, Boolean) -> Unit,
+    onContactRemove: (ContactFilter) -> Unit,
     onVibrationModeChange: (VibrationMode) -> Unit,
     onContactVibrationModeChange: (ContactFilter, VibrationMode?) -> Unit,
     onRemove: () -> Unit,
@@ -255,7 +256,7 @@ private fun AppSection(
             contacts.forEach { contact ->
                 ContactRow(
                     contact = contact,
-                    onWatchedChange = { onContactWatchedChange(contact, it) },
+                    onRemove = { onContactRemove(contact) },
                     onVibrationModeChange = { onContactVibrationModeChange(contact, it) },
                 )
             }
@@ -266,7 +267,7 @@ private fun AppSection(
 @Composable
 private fun ContactRow(
     contact: ContactFilter,
-    onWatchedChange: (Boolean) -> Unit,
+    onRemove: () -> Unit,
     onVibrationModeChange: (VibrationMode?) -> Unit,
 ) {
     Row(
@@ -281,7 +282,9 @@ private fun ContactRow(
             }
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         NullableVibrationModePicker(mode = contact.vibrationMode, onModeSelected = onVibrationModeChange)
-        Switch(checked = contact.isWatched ?: true, onCheckedChange = onWatchedChange)
+        IconButton(onClick = onRemove) {
+            Icon(Icons.Default.Delete, contentDescription = "Remove user")
+        }
     }
 }
 

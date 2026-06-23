@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import ch.rhosys.lyra.ui.apps.AppFilterScreen
+import ch.rhosys.lyra.ui.debug.DebugVibrationScreen
 import ch.rhosys.lyra.ui.devices.DeviceManagerScreen
 import ch.rhosys.lyra.ui.history.NotificationHistoryScreen
 import ch.rhosys.lyra.ui.settings.SettingsScreen
@@ -16,6 +17,9 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         composable(Screen.Apps.route)     { AppFilterScreen() }
         composable(Screen.Devices.route)  { DeviceManagerScreen() }
         composable(Screen.History.route)  { NotificationHistoryScreen() }
-        composable(Screen.Settings.route) { SettingsScreen() }
+        composable(Screen.Settings.route) {
+            SettingsScreen(onDebugVibrationsClick = { navController.navigate(Screen.DebugVibrations.route) })
+        }
+        composable(Screen.DebugVibrations.route) { DebugVibrationScreen() }
     }
 }
