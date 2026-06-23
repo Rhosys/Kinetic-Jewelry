@@ -48,7 +48,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    vm: SettingsViewModel = hiltViewModel(),
+    onDebugVibrationsClick: () -> Unit = {},
+) {
     val listenerEnabled by vm.listenerEnabled.collectAsState()
     val listenerConnected by vm.listenerConnected.collectAsState()
     val batteryOptimizationIgnored by vm.batteryOptimizationIgnored.collectAsState()
@@ -248,6 +251,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         )
         Text("Commit ${BuildConfig.GIT_COMMIT}", style = MaterialTheme.typography.bodySmall)
         Text("Built $buildDate", style = MaterialTheme.typography.bodySmall)
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        Text("Debug", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onDebugVibrationsClick) { Text("DEBUG Vibrations") }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 

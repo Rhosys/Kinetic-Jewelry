@@ -13,6 +13,7 @@ import ch.rhosys.lyra.domain.VibrationPacketBuilder
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.ConnectionState
 import ch.rhosys.lyra.domain.model.ProtocolVersion
+import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -136,7 +137,34 @@ class BluetoothControllerImpl
             timeoutMs: Long,
         ): Result<Unit> {
             logger.info("Sending vibration ($mode) to $address")
-            return runCatching {
+            return writeBlocks(address, mode.blocks, repeat = 1, timeoutMs)
+                .also { result ->
+                    result.onSuccess { logger.info("Vibration sent to $address") }
+                    result.onFailure { logger.error("Vibration failed for $address", it) }
+                }
+        }
+
+        override suspend fun sendRawVibration(
+            address: String,
+            blocks: List<VibrationBlock>,
+            repeat: Int,
+            timeoutMs: Long,
+        ): Result<Unit> {
+            logger.info("Sending raw vibration ($blocks × $repeat) to $address")
+            return writeBlocks(address, blocks, repeat, timeoutMs)
+                .also { result ->
+                    result.onSuccess { logger.info("Raw vibration sent to $address") }
+                    result.onFailure { logger.error("Raw vibration failed for $address", it) }
+                }
+        }
+
+        private suspend fun writeBlocks(
+            address: String,
+            blocks: List<VibrationBlock>,
+            repeat: Int,
+            timeoutMs: Long,
+        ): Result<Unit> =
+            runCatching {
                 withTimeout(timeoutMs) {
                     val events = Channel<GattEvent>(capacity = 16)
                     val callback = BleGattCallback(events)
@@ -154,7 +182,7 @@ class BluetoothControllerImpl
                         check(discovered is GattEvent.ServicesDiscovered) { "Service discovery failed" }
 
                         val firmware = readFirmwareVersion(gatt, events)
-                        val packets = packetBuilder.buildPackets(mode, firmware)
+                        val packets = packetBuilder.buildPackets(blocks, firmware, repeat)
 
                         val commandChar =
                             gatt
@@ -180,11 +208,7 @@ class BluetoothControllerImpl
                         gatt.close()
                     }
                 }
-            }.also { result ->
-                result.onSuccess { logger.info("Vibration sent to $address") }
-                result.onFailure { logger.error("Vibration failed for $address", it) }
             }
-        }
 
         private suspend fun readFirmwareVersion(
             gatt: BluetoothGatt,

@@ -2,6 +2,7 @@ package ch.rhosys.lyra.bluetooth
 
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
+import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +57,13 @@ class FakeBluetoothController
         fun clearLog() {
             _log.value = emptyList()
         }
+
+        override suspend fun sendRawVibration(
+            address: String,
+            blocks: List<VibrationBlock>,
+            repeat: Int,
+            timeoutMs: Long,
+        ): Result<Unit> = Result.success(Unit)
 
         override fun releaseResources() = Unit
     }
