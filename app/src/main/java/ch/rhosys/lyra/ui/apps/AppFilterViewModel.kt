@@ -134,12 +134,9 @@ class AppFilterViewModel
             viewModelScope.launch { appRepo.upsert(filter.copy(isContactLevelEnabled = enabled)) }
         }
 
-        fun setContactWatched(
-            contact: ContactFilter,
-            watched: Boolean,
-        ) {
+        fun removeContact(contact: ContactFilter) {
             viewModelScope.launch {
-                contactRepo.upsert(contact.copy(isWatched = watched))
+                contactRepo.delete(contact.packageName, contact.groupName, contact.contactName)
                 refreshContacts(contact.packageName)
             }
         }

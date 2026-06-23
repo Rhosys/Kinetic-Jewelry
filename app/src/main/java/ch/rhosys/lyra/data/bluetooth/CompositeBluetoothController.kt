@@ -4,6 +4,7 @@ import ch.rhosys.lyra.data.wearos.WEAR_ADDRESS_PREFIX
 import ch.rhosys.lyra.data.wearos.WearOsController
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
+import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,18 @@ class CompositeBluetoothController
                 wearController.sendVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), mode, timeoutMs)
             } else {
                 bleController.sendVibration(address, mode, timeoutMs)
+            }
+
+        override suspend fun sendRawVibration(
+            address: String,
+            blocks: List<VibrationBlock>,
+            repeat: Int,
+            timeoutMs: Long,
+        ): Result<Unit> =
+            if (address.startsWith(WEAR_ADDRESS_PREFIX)) {
+                Result.failure(UnsupportedOperationException("Raw vibration control isn't supported on Wear OS devices"))
+            } else {
+                bleController.sendRawVibration(address, blocks, repeat, timeoutMs)
             }
 
         override fun releaseResources() = bleController.releaseResources()
