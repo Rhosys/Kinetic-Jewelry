@@ -19,22 +19,20 @@ private fun vibratorOf(context: Context): Vibrator =
     }
 
 private fun toWaveform(mode: VibrationMode): VibrationEffect {
-    // A single block is just a continuous buzz; createOneShot is the API meant
-    // for that and is honored consistently, whereas a 2-element createWaveform
-    // array ([0, duration]) is silently dropped by some OEM vibrator HALs.
-    if (mode.blocks.size == 1) {
-        return VibrationEffect.createOneShot(mode.blocks[0].durationMs.toLong(), VibrationEffect.DEFAULT_AMPLITUDE)
+    // Use the amplitude-array overload for all modes — it's the most reliable
+    // across OEMs. createOneShot with DEFAULT_AMPLITUDE is silently ignored on
+    // some devices, and the timings-only createWaveform overload drops short
+    // single-element patterns on others.
+    // Timings alternate off/on starting with off; prepend 0ms so vibration
+    // starts immediately. Amplitudes mirror: 0 for off slots, 255 for on slots.
+    val timings = mutableListOf(0L)
+    val amplitudes = mutableListOf(0)
+    for (block in mode.blocks) {
+        timings.add(block.durationMs.toLong())
+        // Pause blocks (id >= 0xA) get amplitude 0; vibration blocks get max.
+        amplitudes.add(if (block.id >= 0xA) 0 else 255)
     }
-    // createWaveform(timings, repeat) alternates off/on starting with off.
-    // Prepend 0ms so the pattern starts vibrating immediately, then each
-    // block duration follows. All VibrationMode patterns already alternate
-    // buzz→pause→buzz so the off/on assignment is always correct. Single-block
-    // modes (SHORT_PULSE, LONG_PULSE) go through this same call rather than
-    // createOneShot — they used to be special-cased onto createOneShot, but
-    // that carve-out was never confirmed against real hardware and is the
-    // likely source of the "doesn't vibrate" reports for those two modes.
-    val timings = longArrayOf(0L) + mode.blocks.map { it.durationMs.toLong() }.toLongArray()
-    return VibrationEffect.createWaveform(timings, -1)
+    return VibrationEffect.createWaveform(timings.toLongArray(), amplitudes.toIntArray(), -1)
 }
 
 fun previewVibration(
