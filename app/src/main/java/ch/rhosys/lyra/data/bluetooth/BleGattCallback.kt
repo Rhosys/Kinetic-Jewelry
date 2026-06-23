@@ -6,7 +6,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import kotlinx.coroutines.channels.Channel
 
-private val FIRMWARE_CHAR_UUID = java.util.UUID.fromString("0000b2f0-0004-1000-8000-00805f9b34fb")
+private val FIRMWARE_CHAR_UUID = java.util.UUID.fromString("6b2f0004-0000-1000-8000-00805f9b34fb")
 
 class BleGattCallback(
     private val events: Channel<GattEvent>,
