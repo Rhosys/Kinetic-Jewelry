@@ -39,15 +39,6 @@ class VibrationListenerService : WearableListenerService() {
                 @Suppress("DEPRECATION")
                 getSystemService(Vibrator::class.java)
             }
-        // A single-element createWaveform array is silently dropped by some OEM vibrator
-        // HALs; createOneShot is the API meant for a single continuous buzz and is honored
-        // consistently (same fix as VibrationPreview.kt on the phone side).
-        val effect =
-            if (timings.size == 1) {
-                VibrationEffect.createOneShot(timings[0], amplitudes[0])
-            } else {
-                VibrationEffect.createWaveform(timings, amplitudes, -1)
-            }
-        vibrator.vibrate(effect)
+        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
     }
 }
