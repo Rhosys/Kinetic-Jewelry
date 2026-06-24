@@ -17,6 +17,20 @@ val gitCommitHash =
 
 val buildTimestamp = Instant.now().toString()
 
+// Package the repo-root ble-protocol.json into app assets so the app reads
+// the exact same BLE UUIDs as the firmware (which embeds the same file at
+// compile time via firmware/protocol/build.rs) instead of hand-synced literals.
+val bleProtocolAssetsDir = layout.buildDirectory.dir("generated/assets/protocol")
+
+val copyBleProtocolJson by tasks.registering(Copy::class) {
+    from(rootProject.file("ble-protocol.json"))
+    into(bleProtocolAssetsDir)
+}
+
+tasks.matching { Regex("merge\\w*Assets").matches(it.name) }.configureEach {
+    dependsOn(copyBleProtocolJson)
+}
+
 android {
     namespace = "ch.rhosys.lyra"
     compileSdk = 35
@@ -78,6 +92,9 @@ android {
     }
 
     sourceSets {
+        getByName("main") {
+            assets.srcDir(bleProtocolAssetsDir)
+        }
         getByName("debug") {
             java.srcDirs("src/debug/java")
         }
