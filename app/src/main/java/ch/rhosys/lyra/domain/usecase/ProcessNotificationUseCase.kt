@@ -102,7 +102,8 @@ class ProcessNotificationUseCase
             mode: VibrationMode,
             userTimeoutMs: Long,
         ) {
-            for (device in devices) {
+            val sorted = devices.sortedByDescending { it.lastSuccessAt ?: 0L }
+            for (device in sorted) {
                 val timeoutMs = effectiveTimeout(device, userTimeoutMs)
                 val result = bluetoothController.sendVibration(device.address, mode, timeoutMs)
                 if (result.isSuccess) {

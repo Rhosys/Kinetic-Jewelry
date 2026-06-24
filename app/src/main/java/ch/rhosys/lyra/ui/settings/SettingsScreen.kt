@@ -213,7 +213,7 @@ fun SettingsScreen(
                     Text(
                         when (mode) {
                             MultiDeviceMode.ALL_DEVICES -> "Vibrate all devices; wait 1s after first response"
-                            MultiDeviceMode.FIRST_WINS -> "Send to devices in order; stop after first success"
+                            MultiDeviceMode.FIRST_WINS -> "Find the best device, and vibrate it"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
