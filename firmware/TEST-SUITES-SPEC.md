@@ -147,9 +147,9 @@ assert `MockGpio.events()` or `MockGpio.motor_pin.events()`.
 
 | # | Name | Action | Assert |
 |:--|:-----|:-------|:-------|
-| 1 | **Advertises** | central scans | "KineticJewel" found with service UUID `6b2f0001-…` |
+| 1 | **Advertises** | central scans | "KineticJewel" found with service UUID `7ddac4ce-540b-46ea-a933-4be811324000` |
 | 2 | **Connects** | central connects | no error; GATT service discoverable |
-| 3 | **Firmware version** | read char `6b2f0004` | value = `[0x01]` |
+| 3 | **Firmware version** | read char `7ddac4ce-...324001` | value = `[0x01]` |
 | 4 | **Single block** | write `[01 01 01 01]` (short buzz ×1) | motor GPIO high for ~100 ms then low |
 | 5 | **Repeat** | write `[01 01 03 01]` (short buzz ×3) | motor high × 3 with correct durations |
 | 6 | **Pause block** | write `[01 01 01 04]` (short pause ×1) | motor stays low throughout |

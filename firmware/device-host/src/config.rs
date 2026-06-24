@@ -1,5 +1,7 @@
-// Mirror of firmware/device/src/config.rs — keep in sync if UUIDs change.
-pub const DEVICE_NAME:    &str = "KineticJewel";
-pub const SVC_UUID:       &str = "6b2f0001-0000-1000-8000-00805f9b34fb";
-pub const CHAR_FIRMWARE:  &str = "6b2f0004-0000-1000-8000-00805f9b34fb";
-pub const CHAR_COMMAND:   &str = "6b2f0002-0000-1000-8000-00805f9b34fb";
+pub const DEVICE_NAME: &str = "KineticJewel";
+
+// BLE UUIDs come from kinetic-protocol (generated from the repo-root
+// ble-protocol.json), not a hand-copied mirror of firmware/device.
+pub use kinetic_protocol::{
+    CHAR_COMMAND_UUID as CHAR_COMMAND, CHAR_FIRMWARE_UUID as CHAR_FIRMWARE, SVC_UUID,
+};

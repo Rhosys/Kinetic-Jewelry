@@ -1,0 +1,6 @@
+{
+  "description": "Canonical BLE GATT identifiers for the KineticJewel device. One copy, shared by the Rust firmware (firmware/protocol, embedded via build.rs) and the Kotlin app (loaded at runtime from assets). Update this file when the GATT layout changes — both sides read it, so there is nothing else to keep in sync.",
+  "service_uuid": "7ddac4ce-540b-46ea-a933-4be811324000",
+  "firmware_characteristic_uuid": "7ddac4ce-540b-46ea-a933-4be811324001",
+  "command_characteristic_uuid": "7ddac4ce-540b-46ea-a933-4be811324002"
+}

@@ -2,14 +2,7 @@ use esp32_nimble::{uuid128, BLEAdvertisementData, BLEDevice, NimBLEProperties};
 use log::info;
 
 use crate::{protocol, vibration};
-
-// ── BLE UUIDs ─────────────────────────────────────────────────────────────────
-// Service
-const SVC: &str          = "6b2f0001-0000-1000-8000-00805f9b34fb";
-// Firmware version – phone READs this first to learn the protocol version
-const CHAR_FIRMWARE: &str = "6b2f0004-0000-1000-8000-00805f9b34fb";
-// Command – phone WRITEs vibration packets here
-const CHAR_COMMAND: &str  = "6b2f0002-0000-1000-8000-00805f9b34fb";
+use protocol::{CHAR_COMMAND_UUID as CHAR_COMMAND, CHAR_FIRMWARE_UUID as CHAR_FIRMWARE, SVC_UUID as SVC};
 
 pub fn start(queue: vibration::Queue) -> anyhow::Result<()> {
     let ble    = BLEDevice::take();

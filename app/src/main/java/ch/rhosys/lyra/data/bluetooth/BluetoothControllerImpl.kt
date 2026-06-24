@@ -26,13 +26,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val SERVICE_UUID = UUID.fromString("6b2f0001-0000-1000-8000-00805f9b34fb")
-private val COMMAND_CHAR_UUID = UUID.fromString("6b2f0002-0000-1000-8000-00805f9b34fb")
-private val FIRMWARE_CHAR_UUID = UUID.fromString("6b2f0004-0000-1000-8000-00805f9b34fb")
 private const val SCAN_TIMEOUT_MS = 10_000L
 
 @SuppressLint("MissingPermission") // Permissions checked at UI layer before invoking controller
@@ -46,6 +42,8 @@ class BluetoothControllerImpl
     ) : BluetoothController {
         private val bluetoothAdapter =
             (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+
+        private val protocolIds = BleProtocolIds.load(context)
 
         private val _pairedDevices = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
         override val pairedDevices: StateFlow<List<BluetoothDeviceInfo>> = _pairedDevices.asStateFlow()
@@ -167,7 +165,7 @@ class BluetoothControllerImpl
             runCatching {
                 withTimeout(timeoutMs) {
                     val events = Channel<GattEvent>(capacity = 16)
-                    val callback = BleGattCallback(events)
+                    val callback = BleGattCallback(events, protocolIds.firmwareCharUuid)
                     val device = bluetoothAdapter.getRemoteDevice(address)
 
                     @Suppress("MissingPermission")
@@ -186,8 +184,8 @@ class BluetoothControllerImpl
 
                         val commandChar =
                             gatt
-                                .getService(SERVICE_UUID)
-                                ?.getCharacteristic(COMMAND_CHAR_UUID)
+                                .getService(protocolIds.serviceUuid)
+                                ?.getCharacteristic(protocolIds.commandCharUuid)
                                 ?: error("Command characteristic not found on $address")
 
                         packets.forEachIndexed { index, (bytes, delayMs) ->
@@ -215,7 +213,7 @@ class BluetoothControllerImpl
             events: Channel<GattEvent>,
         ): ProtocolVersion {
             val firmwareChar =
-                gatt.getService(SERVICE_UUID)?.getCharacteristic(FIRMWARE_CHAR_UUID)
+                gatt.getService(protocolIds.serviceUuid)?.getCharacteristic(protocolIds.firmwareCharUuid)
                     ?: return ProtocolVersion.V1
 
             @Suppress("DEPRECATION", "MissingPermission")

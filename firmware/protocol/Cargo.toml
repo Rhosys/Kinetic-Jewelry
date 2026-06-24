@@ -11,6 +11,9 @@ edition = "2021"
 name = "kinetic_protocol"
 path = "src/lib.rs"
 
+[build-dependencies]
+serde_json = "1"
+
 [dev-dependencies]
 serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
