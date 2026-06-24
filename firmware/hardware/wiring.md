@@ -82,9 +82,9 @@ sequenceDiagram
     participant E as ESP32 (peripheral)
     participant M as Motor / LED
     P->>E: Connect
-    P->>E: Read firmware char 6b2f0004
+    P->>E: Read firmware char 6f73feae-...808d07
     E-->>P: 0x01 (protocol version)
-    P->>E: Write command char 6b2f0002<br/>[ver, cmd, repeat, blocks...]
+    P->>E: Write command char 6f73feae-...808d08<br/>[ver, cmd, repeat, blocks...]
     E->>E: parse() -> Vibrate { blocks, repeat }
     loop each block
         E->>M: GPIO high/low for block duration

@@ -121,12 +121,14 @@ private fun buildPacket(blockIds: List<Int>, repeat: Int): ByteArray {
 
 ### Step 4 — Update BLE UUIDs (if they change)
 
-File: `firmware/device/src/ble.rs` (top of file, inline string literals)
+File: `ble-protocol.json` (repo root) — the single source of truth. Both the
+firmware (via `firmware/protocol/build.rs`) and the Kotlin app (loaded from
+packaged assets at runtime) read this one file; there's nothing else to edit.
 
-```rust
-const SVC:           &str = "6b2f0001-…";
-const CHAR_FIRMWARE: &str = "6b2f0004-…";
-const CHAR_COMMAND:  &str = "6b2f0002-…";
+```json
+"service_uuid": "6f73feae-5e0c-4193-a0f1-e2c96c808d06",
+"firmware_characteristic_uuid": "6f73feae-5e0c-4193-a0f1-e2c96c808d07",
+"command_characteristic_uuid": "6f73feae-5e0c-4193-a0f1-e2c96c808d08",
 ```
 
 UUIDs must also be updated in the Android app's Bluetooth controller.
@@ -201,8 +203,8 @@ To change target board, edit `firmware/device/.cargo/config.toml`:
 Use **nRF Connect** (iOS/Android) or **LightBlue**:
 
 1. Scan → connect to **KineticJewel**
-2. Read characteristic `6b2f0004` → expect `[01]`
-3. Write to characteristic `6b2f0002`:
+2. Read characteristic `6f73feae-...808d07` → expect `[01]`
+3. Write to characteristic `6f73feae-...808d08`:
    - `01 01 01 01` → short buzz once
    - `01 01 03 07` → click, repeated 3 times
    - `01 01 01 07 04 07` → double tap
@@ -278,13 +280,17 @@ drift in the real builder will now be caught by the roundtrip CI job.
 
 ### BLE UUIDs — confirm or replace ✅
 
-UUIDs confirmed as the agreed wire-protocol values:
-- Service:         `6b2f0001-0000-1000-8000-00805f9b34fb`
-- Firmware char:   `6b2f0004-0000-1000-8000-00805f9b34fb`
-- Command char:    `6b2f0002-0000-1000-8000-00805f9b34fb`
+Replaced the old placeholder values (hand-copied across four files, which had
+drifted and caused a real "cannot connect" bug) with real RFC 4122 v4 UUIDs,
+generated with `uuidgen` and sharing all bits except the last nibble (the only
+byte not constrained by the version/variant fields):
+- Service:         `6f73feae-5e0c-4193-a0f1-e2c96c808d06`
+- Firmware char:   `6f73feae-5e0c-4193-a0f1-e2c96c808d07`
+- Command char:    `6f73feae-5e0c-4193-a0f1-e2c96c808d08`
 
-Both `firmware/device/src/ble.rs` and `BluetoothControllerImpl.kt` already use
-these values. "Placeholder" comments removed.
+`ble-protocol.json` (repo root) is now the single source of truth: the
+firmware embeds it at compile time via `firmware/protocol/build.rs`, and the
+Kotlin app loads it from packaged assets at runtime via `BleProtocolIds.kt`.
 
 ---
 
