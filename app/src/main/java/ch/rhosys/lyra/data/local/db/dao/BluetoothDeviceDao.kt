@@ -37,4 +37,10 @@ interface BluetoothDeviceDao {
         address: String,
         disabledUntil: Long?,
     )
+
+    @Query("UPDATE bluetooth_devices SET last_success_at = :epochMs WHERE address = :address")
+    suspend fun setLastSuccessAt(
+        address: String,
+        epochMs: Long,
+    )
 }

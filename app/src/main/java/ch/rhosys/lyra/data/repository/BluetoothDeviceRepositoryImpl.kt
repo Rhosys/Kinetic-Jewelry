@@ -28,6 +28,7 @@ class BluetoothDeviceRepositoryImpl
         override suspend fun recordSuccess(address: String) {
             dao.resetConsecutiveTimeouts(address)
             dao.setDisabledUntil(address, null)
+            dao.setLastSuccessAt(address, System.currentTimeMillis())
         }
 
         override suspend fun recordFailure(address: String) {

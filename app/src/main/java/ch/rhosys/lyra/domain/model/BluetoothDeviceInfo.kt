@@ -11,6 +11,8 @@ data class BluetoothDeviceInfo(
     /** Epoch ms until which this device is suppressed after repeated timeouts. null = active. */
     val disabledUntil: Long? = null,
     val consecutiveTimeouts: Int = 0,
+    /** Epoch ms of last successful vibration delivery. null = never succeeded. */
+    val lastSuccessAt: Long? = null,
 ) {
     val isCurrentlyDisabled: Boolean
         get() = disabledUntil != null && System.currentTimeMillis() < disabledUntil
