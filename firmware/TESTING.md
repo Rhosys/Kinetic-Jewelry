@@ -54,9 +54,9 @@ Use a generic BLE central app — **nRF Connect** (Nordic, iOS/Android) or
 **LightBlue** — so you're testing the firmware in isolation from your phone app:
 
 1. Scan → confirm a device named **KineticJewel** advertises.
-2. Connect → discover services → find service `6b2f0001-…`.
-3. **Read** the firmware characteristic `6b2f0004-…` → expect one byte `0x01`.
-4. **Write** to the command characteristic `6b2f0002-…`:
+2. Connect → discover services → find service `7ddac4ce-540b-46ea-a933-4be811324000`.
+3. **Read** the firmware characteristic `7ddac4ce-540b-46ea-a933-4be811324001` → expect one byte `0x01`.
+4. **Write** to the command characteristic `7ddac4ce-540b-46ea-a933-4be811324002`:
    - `01 01 01 03` = version 1, vibrate, repeat 1, one long-buzz block.
    - Serial log should print `[BLE] vibrate 1 block(s) × 1`.
 

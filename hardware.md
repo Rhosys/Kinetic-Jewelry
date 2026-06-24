@@ -395,19 +395,19 @@ In nRF Connect, tap the device → **Services**.
 You should see one service:
 
 ```
-Service: 6b2f0001-0000-1000-8000-00805f9b34fb
-  Characteristic: 6b2f0004-...  [READ]
-  Characteristic: 6b2f0002-...  [WRITE]
+Service: 7ddac4ce-540b-46ea-a933-4be811324000
+  Characteristic: 7ddac4ce-...324001  [READ]
+  Characteristic: 7ddac4ce-...324002  [WRITE]
 ```
 
 ### 7.4 Read the firmware version
 
-Tap the 6b2f0004 characteristic → read icon (↓).
+Tap the 7ddac4ce-...324001 characteristic → read icon (↓).
 Expected value: `01` (protocol version 1).
 
 ### 7.5 Send a vibration command
 
-Tap the 6b2f0002 characteristic → write icon (↑).
+Tap the 7ddac4ce-...324002 characteristic → write icon (↑).
 Select "Byte array" and enter:
 
 ```

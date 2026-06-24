@@ -1,5 +1,6 @@
 package ch.rhosys.lyra.ui.debug
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.rhosys.lyra.domain.BluetoothController
@@ -7,7 +8,9 @@ import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.domain.repository.BluetoothDeviceRepository
+import ch.rhosys.lyra.ui.util.previewVibration
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -25,6 +28,7 @@ class DebugVibrationViewModel
     constructor(
         deviceRepo: BluetoothDeviceRepository,
         private val bluetoothController: BluetoothController,
+        @ApplicationContext private val context: Context,
     ) : ViewModel() {
         val alertDevices: StateFlow<List<BluetoothDeviceInfo>> = deviceRepo.observeAlertEnabled()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -67,6 +71,7 @@ class DebugVibrationViewModel
                     _snackbar.emit("Sequence is empty — add at least one block")
                     return@launch
                 }
+                previewVibration(context, blocks, repeatCount)
                 if (alertDevices.value.isEmpty()) {
                     _snackbar.emit("No device connected — add one in the Devices tab")
                     return@launch

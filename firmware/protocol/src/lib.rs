@@ -16,6 +16,12 @@
 /// The phone reads this first and uses it to select compatible packet formats.
 pub const FIRMWARE_VERSION: u8 = 1;
 
+// BLE GATT UUIDs (SVC_UUID, CHAR_FIRMWARE_UUID, CHAR_COMMAND_UUID), generated
+// at build time from the repo-root `ble-protocol.json` — see build.rs. The
+// Kotlin app reads the same JSON file at runtime, so there is one canonical
+// copy of these values instead of hand-synced literals on each side.
+include!(concat!(env!("OUT_DIR"), "/ble_uuids.rs"));
+
 /// One timed step: motor on or off for a fixed duration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VibBlock {
