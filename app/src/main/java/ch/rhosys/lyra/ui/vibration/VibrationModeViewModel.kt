@@ -30,10 +30,7 @@ class VibrationModeViewModel @Inject constructor(
 
     fun testMode(mode: VibrationMode) {
         viewModelScope.launch {
-            if (alertDevices.value.isEmpty()) {
-                _snackbar.emit("No device connected — add one in the Devices tab")
-                return@launch
-            }
+            if (alertDevices.value.isEmpty()) return@launch
             alertDevices.value.forEach { device ->
                 val result = bluetoothController.sendVibration(device.address, mode)
                 if (result.isFailure) {
