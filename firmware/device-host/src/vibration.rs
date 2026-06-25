@@ -18,11 +18,18 @@ pub fn new_queue() -> Queue {
     Arc::new(Mutex::new(VecDeque::new()))
 }
 
-/// Append `blocks × repeat` steps onto the queue.
-/// Safe to call from any thread (Tokio tasks or BLE write handlers).
+/// Gap inserted between repeat iterations so each one is felt as a distinct
+/// pulse instead of blurring into one continuous buzz.
+const REPEAT_GAP_MS: u64 = 200;
+
+/// Append `blocks × repeat` steps onto the queue, with a medium pause between
+/// each iteration. Safe to call from any thread (Tokio tasks or BLE write handlers).
 pub fn enqueue(queue: &Queue, blocks: &[VibBlock], repeat: u8) {
     let mut q = queue.lock().unwrap();
-    for _ in 0..repeat {
+    for i in 0..repeat {
+        if i > 0 {
+            q.push_back(Step { motor_on: false, duration_ms: REPEAT_GAP_MS });
+        }
         for b in blocks {
             q.push_back(Step { motor_on: b.motor_on, duration_ms: b.duration_ms });
         }
