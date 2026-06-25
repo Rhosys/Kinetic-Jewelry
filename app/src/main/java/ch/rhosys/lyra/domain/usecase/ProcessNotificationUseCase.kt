@@ -2,6 +2,7 @@ package ch.rhosys.lyra.domain.usecase
 
 import ch.rhosys.lyra.domain.AppSettingsProvider
 import ch.rhosys.lyra.domain.BluetoothController
+import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.MultiDeviceMode
 import ch.rhosys.lyra.domain.model.VibrationMode
@@ -23,6 +24,7 @@ class ProcessNotificationUseCase
         private val contactFilterRepository: ContactFilterRepository,
         private val bluetoothDeviceRepository: BluetoothDeviceRepository,
         private val bluetoothController: BluetoothController,
+        private val phoneVibrator: PhoneVibrator,
         private val appSettings: AppSettingsProvider,
     ) {
         suspend fun execute(
@@ -69,6 +71,10 @@ class ProcessNotificationUseCase
                 if (!effectiveIsWatched) return
                 effectiveMode = modeOverride ?: appFilter.vibrationMode
             }
+
+            // The phone is always available and isn't part of the alert-enabled device list —
+            // it vibrates unconditionally, independent of whatever BLE/Wear devices are configured.
+            phoneVibrator.sendVibration(effectiveMode.blocks)
 
             val allAlertDevices = bluetoothDeviceRepository.observeAlertEnabled().first()
             val userTimeoutMs = appSettings.connectionTimeoutMs.first()

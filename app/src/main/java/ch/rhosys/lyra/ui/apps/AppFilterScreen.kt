@@ -36,11 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ch.rhosys.lyra.data.AppIconCache
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +50,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.VibrationMode
-import ch.rhosys.lyra.data.phone.previewVibration
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @Composable
@@ -136,6 +133,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
                         onContactRemove = { contact -> vm.removeContact(contact) },
                         onVibrationModeChange = { vm.setAppVibrationMode(app.packageName, it) },
                         onContactVibrationModeChange = { contact, mode -> vm.setContactVibrationMode(contact, mode) },
+                        onDemo = vm::demoVibration,
                         onRemove = { vm.removeApp(app.packageName) },
                     )
                 }
@@ -187,6 +185,7 @@ private fun AppSection(
     onContactRemove: (ContactFilter) -> Unit,
     onVibrationModeChange: (VibrationMode) -> Unit,
     onContactVibrationModeChange: (ContactFilter, VibrationMode?) -> Unit,
+    onDemo: (VibrationMode) -> Unit,
     onRemove: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -233,7 +232,7 @@ private fun AppSection(
             modifier = Modifier.padding(top = 4.dp),
         ) {
             Text("Vibration", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            VibrationModePicker(mode = app.vibrationMode, onModeSelected = onVibrationModeChange)
+            VibrationModePicker(mode = app.vibrationMode, onModeSelected = onVibrationModeChange, onDemo = onDemo)
         }
 
         // "All Users" toggle
@@ -260,6 +259,7 @@ private fun AppSection(
                     contact = contact,
                     onRemove = { onContactRemove(contact) },
                     onVibrationModeChange = { onContactVibrationModeChange(contact, it) },
+                    onDemo = onDemo,
                 )
             }
         }
@@ -271,6 +271,7 @@ private fun ContactRow(
     contact: ContactFilter,
     onRemove: () -> Unit,
     onVibrationModeChange: (VibrationMode?) -> Unit,
+    onDemo: (VibrationMode) -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -283,7 +284,7 @@ private fun ContactRow(
                 contact.contactName
             }
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        NullableVibrationModePicker(mode = contact.vibrationMode, onModeSelected = onVibrationModeChange)
+        NullableVibrationModePicker(mode = contact.vibrationMode, onModeSelected = onVibrationModeChange, onDemo = onDemo)
         IconButton(onClick = onRemove) {
             Icon(Icons.Default.Delete, contentDescription = "Remove user")
         }
@@ -294,10 +295,9 @@ private fun ContactRow(
 private fun VibrationModePicker(
     mode: VibrationMode,
     onModeSelected: (VibrationMode) -> Unit,
+    onDemo: (VibrationMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode.displayName) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -306,7 +306,7 @@ private fun VibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
-                        scope.launch { previewVibration(context, m) }
+                        onDemo(m)
                         onModeSelected(m)
                     },
                 )
@@ -319,10 +319,9 @@ private fun VibrationModePicker(
 private fun NullableVibrationModePicker(
     mode: VibrationMode?,
     onModeSelected: (VibrationMode?) -> Unit,
+    onDemo: (VibrationMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: "App default") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -338,7 +337,7 @@ private fun NullableVibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
-                        scope.launch { previewVibration(context, m) }
+                        onDemo(m)
                         onModeSelected(m)
                     },
                 )
