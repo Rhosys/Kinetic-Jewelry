@@ -25,18 +25,9 @@ private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
     // All patterns use the same createWaveform path for consistency.
     // createWaveform(timings, repeat) alternates off/on starting with off.
     // Prepend 0ms so the pattern starts vibrating immediately, then each
-    // block duration follows. VibrationMode patterns alternate buzz→pause→buzz
-    // so the off/on assignment is always correct.
-    //
-    // Single-block modes (SHORT_PULSE, LONG_PULSE) append a 1ms off-segment
-    // so the waveform has at least 2 entries — some OEM vibrator HALs silently
-    // drop createOneShot or single-entry waveforms.
-    val rawTimings = blocks.map { it.durationMs.toLong() }.toLongArray()
-    val timings = if (rawTimings.size == 1) {
-        longArrayOf(0L, rawTimings[0], 1L)
-    } else {
-        longArrayOf(0L) + rawTimings
-    }
+    // block duration follows. All VibrationMode patterns already alternate
+    // buzz→pause→buzz so the off/on assignment is always correct.
+    val timings = longArrayOf(0L) + blocks.map { it.durationMs.toLong() }.toLongArray()
     Log.d(TAG, "toWaveform: blocks=${blocks.map { "${it.name}(${it.durationMs}ms)" }}, timings=${timings.toList()}")
     return VibrationEffect.createWaveform(timings, -1)
 }
@@ -54,11 +45,14 @@ fun previewVibration(
 ) {
     if (blocks.isEmpty()) return
     val vibrator = vibratorOf(context)
+
     if (!vibrator.hasVibrator()) {
         Log.w(TAG, "previewVibration: device has no vibrator")
         return
     }
-    val sequence = List(repeat.coerceAtLeast(1)) { blocks }.flatten()
+    val sequence =
+        List(repeat.coerceAtLeast(1)) { blocks }
+            .reduce { acc, next -> acc + VibrationBlock.MEDIUM_PAUSE + next }
     Log.d(TAG, "previewVibration: hasAmplitudeControl=${vibrator.hasAmplitudeControl()}, blocks=${sequence.size}, repeat=$repeat")
     vibrator.vibrate(toWaveform(sequence))
 }

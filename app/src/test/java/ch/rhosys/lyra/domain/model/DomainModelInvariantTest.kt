@@ -114,8 +114,25 @@ class DomainModelInvariantTest {
     }
 
     @Test
-    fun `SHORT_PULSE totalDurationMs equals SHORT_BUZZ duration`() {
-        assertEquals(VibrationBlock.SHORT_BUZZ.durationMs, VibrationMode.SHORT_PULSE.totalDurationMs)
+    fun `SHORT_PULSE is two short buzzes separated by short pauses`() {
+        assertEquals(
+            listOf(
+                VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
+                VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
+            ),
+            VibrationMode.SHORT_PULSE.blocks,
+        )
+    }
+
+    @Test
+    fun `LONG_PULSE is two long buzzes separated by medium pauses`() {
+        assertEquals(
+            listOf(
+                VibrationBlock.LONG_BUZZ, VibrationBlock.MEDIUM_PAUSE,
+                VibrationBlock.LONG_BUZZ, VibrationBlock.MEDIUM_PAUSE,
+            ),
+            VibrationMode.LONG_PULSE.blocks,
+        )
     }
 
     @Test
