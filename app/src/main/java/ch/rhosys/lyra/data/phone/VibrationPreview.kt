@@ -22,7 +22,8 @@ private fun vibratorOf(context: Context): Vibrator =
 
 private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
     val timings = blocks.map { it.durationMs.toLong() }.toLongArray()
-    val amplitudes = blocks.map { if (it.motorOn) VibrationEffect.MAX_AMPLITUDE else 0 }.toIntArray()
+    // VibrationEffect has no MAX_AMPLITUDE constant; the valid scale is 1-255.
+    val amplitudes = blocks.map { if (it.motorOn) 255 else 0 }.toIntArray()
     return VibrationEffect.createWaveform(timings, amplitudes, -1)
 }
 
