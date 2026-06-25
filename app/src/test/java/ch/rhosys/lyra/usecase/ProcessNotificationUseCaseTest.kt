@@ -12,6 +12,7 @@ import ch.rhosys.lyra.fake.FakeAppSettingsProvider
 import ch.rhosys.lyra.fake.FakeBluetoothController
 import ch.rhosys.lyra.fake.FakeBluetoothDeviceRepository
 import ch.rhosys.lyra.fake.FakeContactFilterRepository
+import ch.rhosys.lyra.fake.FakePhoneVibrator
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -24,6 +25,7 @@ class ProcessNotificationUseCaseTest {
     private lateinit var contactRepo: FakeContactFilterRepository
     private lateinit var deviceRepo: FakeBluetoothDeviceRepository
     private lateinit var btController: FakeBluetoothController
+    private lateinit var phoneVibrator: FakePhoneVibrator
     private lateinit var appSettings: FakeAppSettingsProvider
     private lateinit var useCase: ProcessNotificationUseCase
 
@@ -47,8 +49,9 @@ class ProcessNotificationUseCaseTest {
         contactRepo = FakeContactFilterRepository()
         deviceRepo = FakeBluetoothDeviceRepository()
         btController = FakeBluetoothController()
+        phoneVibrator = FakePhoneVibrator()
         appSettings = FakeAppSettingsProvider()
-        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, appSettings)
+        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings)
     }
 
     // ── Scenario 1: un-watched app ───────────────────────────────────────────
@@ -90,7 +93,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.LONG_PULSE, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.LONG_PULSE.blocks, btController.sentCommands[0].blocks)
             assertNull(contactRepo.get("com.example", "", "Alice"))
         }
 
@@ -106,7 +109,7 @@ class ProcessNotificationUseCaseTest {
 
             assertNull("Unknown sender must not be auto-added", contactRepo.get("com.example", "", "Alice"))
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.HEARTBEAT, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.HEARTBEAT.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 5: explicit mode override on contact ────────────────────────
@@ -121,7 +124,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.SOS, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.SOS.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 6: contact isWatched=false ──────────────────────────────────
@@ -150,7 +153,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "Work", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.DOUBLE_TAP, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.DOUBLE_TAP.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 8: sender-within-group overrides group rule ─────────────────
@@ -166,7 +169,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "Work", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.ESCALATING, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.ESCALATING.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 9: multiple alert-enabled devices ───────────────────────────
@@ -207,7 +210,7 @@ class ProcessNotificationUseCaseTest {
     fun `FIRST_WINS mode sends to first device only`() =
         runTest {
             appSettings = FakeAppSettingsProvider(mode = MultiDeviceMode.FIRST_WINS)
-            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, appSettings)
+            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings)
 
             appRepo.upsert(watchedApp())
             deviceRepo.upsert(alertDevice)

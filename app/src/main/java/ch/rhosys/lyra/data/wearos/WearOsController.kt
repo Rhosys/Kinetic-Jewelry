@@ -7,7 +7,6 @@ import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.ConnectionState
 import ch.rhosys.lyra.domain.model.DeviceType
 import ch.rhosys.lyra.domain.model.VibrationBlock
-import ch.rhosys.lyra.domain.model.VibrationMode
 import com.google.android.gms.wearable.Wearable
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,8 +18,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 const val WEAR_ADDRESS_PREFIX = "wear:"
-private const val VIBRATE_PATH = "/kinetic/vibrate"
-private const val VIBRATE_RAW_PATH = "/kinetic/vibrate_raw"
+private const val VIBRATE_PATH = "/kinetic/vibrate_raw"
 
 @Singleton
 class WearOsController
@@ -52,27 +50,8 @@ class WearOsController
             }
         }
 
+        /** Sends a raw block sequence to the Wear OS node [nodeId]. */
         suspend fun sendVibration(
-            nodeId: String,
-            mode: VibrationMode,
-            timeoutMs: Long = AppSettingsProvider.DEFAULT_TIMEOUT_MS,
-        ): Result<Unit> =
-            runCatching {
-                withTimeout(timeoutMs) {
-                    val payload = byteArrayOf(mode.stableId.toByte())
-                    Wearable
-                        .getMessageClient(context)
-                        .sendMessage(nodeId, VIBRATE_PATH, payload)
-                        .await()
-                    Unit
-                }
-            }.also { result ->
-                result.onSuccess { logger.info("Wear vibration sent to $nodeId (${mode.displayName})") }
-                result.onFailure { logger.error("Wear vibration failed for $nodeId", it) }
-            }
-
-        /** Sends an arbitrary block sequence, bypassing the named [VibrationMode]s — debug/diagnostic use. */
-        suspend fun sendRawVibration(
             nodeId: String,
             blocks: List<VibrationBlock>,
             repeat: Int,
@@ -83,12 +62,12 @@ class WearOsController
                     val payload = byteArrayOf(repeat.coerceAtLeast(1).toByte()) + blocks.map { it.id }.toByteArray()
                     Wearable
                         .getMessageClient(context)
-                        .sendMessage(nodeId, VIBRATE_RAW_PATH, payload)
+                        .sendMessage(nodeId, VIBRATE_PATH, payload)
                         .await()
                     Unit
                 }
             }.also { result ->
-                result.onSuccess { logger.info("Wear raw vibration sent to $nodeId ($blocks × $repeat)") }
-                result.onFailure { logger.error("Wear raw vibration failed for $nodeId", it) }
+                result.onSuccess { logger.info("Wear vibration sent to $nodeId ($blocks × $repeat)") }
+                result.onFailure { logger.error("Wear vibration failed for $nodeId", it) }
             }
     }
