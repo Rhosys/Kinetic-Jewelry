@@ -1,5 +1,6 @@
 package ch.rhosys.lyra.usecase
 
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.ConnectionState
@@ -51,7 +52,7 @@ class ProcessNotificationUseCaseTest {
         btController = FakeBluetoothController()
         phoneVibrator = FakePhoneVibrator()
         appSettings = FakeAppSettingsProvider()
-        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings)
+        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings, AppLogger())
     }
 
     // ── Scenario 1: un-watched app ───────────────────────────────────────────
@@ -210,7 +211,7 @@ class ProcessNotificationUseCaseTest {
     fun `FIRST_WINS mode sends to first device only`() =
         runTest {
             appSettings = FakeAppSettingsProvider(mode = MultiDeviceMode.FIRST_WINS)
-            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings)
+            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings, AppLogger())
 
             appRepo.upsert(watchedApp())
             deviceRepo.upsert(alertDevice)

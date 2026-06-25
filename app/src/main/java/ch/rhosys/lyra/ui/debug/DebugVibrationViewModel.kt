@@ -2,6 +2,7 @@ package ch.rhosys.lyra.ui.debug
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
@@ -21,6 +22,7 @@ class DebugVibrationViewModel
     @Inject
     constructor(
         private val phoneVibrator: PhoneVibrator,
+        private val logger: AppLogger,
     ) : ViewModel() {
         private val _sequence = MutableStateFlow<List<VibrationBlock>>(emptyList())
         val sequence: StateFlow<List<VibrationBlock>> = _sequence.asStateFlow()
@@ -57,6 +59,7 @@ class DebugVibrationViewModel
             val repeatCount = _repeat.value
             viewModelScope.launch {
                 if (blocks.size < 3) {
+                    logger.warn("Debug vibration rejected: sequence has ${blocks.size} block(s), needs at least 3")
                     _snackbar.emit("Sequence must have at least 3 blocks")
                     return@launch
                 }

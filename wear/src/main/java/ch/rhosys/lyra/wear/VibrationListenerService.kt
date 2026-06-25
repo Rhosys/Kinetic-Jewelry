@@ -4,9 +4,11 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 
+private const val TAG = "VibrationListener"
 private const val VIBRATE_PATH = "/kinetic/vibrate_raw"
 
 /** Gap between repeat iterations — a real delay between separate vibrate() calls, never baked into a waveform. */
@@ -36,7 +38,12 @@ class VibrationListenerService : WearableListenerService() {
             }
 
     override fun onMessageReceived(event: MessageEvent) {
-        if (event.path == VIBRATE_PATH) playRawSequence(event.data)
+        Log.d(TAG, "onMessageReceived: path=${event.path}, ${event.data.size} byte(s)")
+        if (event.path == VIBRATE_PATH) {
+            playRawSequence(event.data)
+        } else {
+            Log.w(TAG, "Ignoring message on unknown path ${event.path}")
+        }
     }
 
     /**
@@ -45,15 +52,22 @@ class VibrationListenerService : WearableListenerService() {
      * callbacks run off the main thread), not a pause block folded into the waveform.
      */
     private fun playRawSequence(data: ByteArray) {
-        if (data.isEmpty()) return
+        if (data.isEmpty()) {
+            Log.w(TAG, "playRawSequence: empty payload")
+            return
+        }
         val repeatCount = data[0].toInt().coerceAtLeast(1)
         val blocks = data.drop(1).mapNotNull { BLOCK_DURATIONS[it] }
-        if (blocks.isEmpty()) return
+        if (blocks.isEmpty()) {
+            Log.w(TAG, "playRawSequence: no recognized block ids in payload")
+            return
+        }
 
         val timings = blocks.map { it.first }.toLongArray()
         val amplitudes = blocks.map { it.second }.toIntArray()
         val waveform = VibrationEffect.createWaveform(timings, amplitudes, -1)
         val totalDurationMs = blocks.sumOf { it.first }
+        Log.d(TAG, "playRawSequence: ${blocks.size} block(s), $repeatCount×, $totalDurationMs ms/cycle")
 
         val vibrator = vibrator
         for (i in 0 until repeatCount) {

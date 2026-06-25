@@ -1,5 +1,6 @@
 package ch.rhosys.lyra.data.bluetooth
 
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.data.wearos.WEAR_ADDRESS_PREFIX
 import ch.rhosys.lyra.data.wearos.WearOsController
 import ch.rhosys.lyra.domain.BluetoothController
@@ -22,6 +23,7 @@ class CompositeBluetoothController
     constructor(
         private val bleController: BluetoothControllerImpl,
         private val wearController: WearOsController,
+        private val logger: AppLogger,
     ) : BluetoothController {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -58,8 +60,11 @@ class CompositeBluetoothController
             timeoutMs: Long,
         ): Result<Unit> =
             if (address.startsWith(WEAR_ADDRESS_PREFIX)) {
-                wearController.sendVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), blocks, repeat, timeoutMs)
+                val nodeId = address.removePrefix(WEAR_ADDRESS_PREFIX)
+                logger.info("Routing vibration to Wear OS node $nodeId")
+                wearController.sendVibration(nodeId, blocks, repeat, timeoutMs)
             } else {
+                logger.info("Routing vibration to BLE device $address")
                 bleController.sendVibration(address, blocks, repeat, timeoutMs)
             }
 
