@@ -6,7 +6,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import ch.rhosys.lyra.domain.model.VibrationBlock
-import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.domain.model.withoutTrailingPauses
 import kotlinx.coroutines.delay
 
@@ -26,11 +25,6 @@ private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
     val amplitudes = blocks.map { if (it.motorOn) VibrationEffect.DEFAULT_AMPLITUDE else 0 }.toIntArray()
     return VibrationEffect.createWaveform(timings, amplitudes, -1)
 }
-
-suspend fun previewVibration(
-    context: Context,
-    mode: VibrationMode,
-) = previewVibration(context, mode.blocks)
 
 /**
  * Plays a block sequence on the phone's own vibrator, repeated `repeat` times. The pause

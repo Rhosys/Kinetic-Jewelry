@@ -2,8 +2,7 @@ package ch.rhosys.lyra.ui.debug
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.rhosys.lyra.data.phone.PHONE_ADDRESS
-import ch.rhosys.lyra.data.phone.PhoneVibrationController
+import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,16 +15,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * The one exception to the unified [ch.rhosys.lyra.domain.BluetoothController] dispatch — this
- * screen builds an arbitrary, debug-only block sequence and sends it explicitly to the phone's
- * own vibrator only, never to BLE jewelry or Wear OS devices.
- */
+/** Builds an arbitrary, debug-only block sequence and sends it to the phone's own vibrator. */
 @HiltViewModel
 class DebugVibrationViewModel
     @Inject
     constructor(
-        private val phoneController: PhoneVibrationController,
+        private val phoneVibrator: PhoneVibrator,
     ) : ViewModel() {
         private val _sequence = MutableStateFlow<List<VibrationBlock>>(emptyList())
         val sequence: StateFlow<List<VibrationBlock>> = _sequence.asStateFlow()
@@ -65,7 +60,7 @@ class DebugVibrationViewModel
                     _snackbar.emit("Sequence must have at least 3 blocks")
                     return@launch
                 }
-                val result = phoneController.sendVibration(PHONE_ADDRESS, blocks, repeatCount)
+                val result = phoneVibrator.sendVibration(blocks, repeatCount)
                 if (result.isFailure) {
                     _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
                 } else {

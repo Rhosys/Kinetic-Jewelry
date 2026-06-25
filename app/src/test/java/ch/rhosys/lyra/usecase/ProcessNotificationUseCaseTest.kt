@@ -12,6 +12,7 @@ import ch.rhosys.lyra.fake.FakeAppSettingsProvider
 import ch.rhosys.lyra.fake.FakeBluetoothController
 import ch.rhosys.lyra.fake.FakeBluetoothDeviceRepository
 import ch.rhosys.lyra.fake.FakeContactFilterRepository
+import ch.rhosys.lyra.fake.FakePhoneVibrator
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -24,6 +25,7 @@ class ProcessNotificationUseCaseTest {
     private lateinit var contactRepo: FakeContactFilterRepository
     private lateinit var deviceRepo: FakeBluetoothDeviceRepository
     private lateinit var btController: FakeBluetoothController
+    private lateinit var phoneVibrator: FakePhoneVibrator
     private lateinit var appSettings: FakeAppSettingsProvider
     private lateinit var useCase: ProcessNotificationUseCase
 
@@ -47,8 +49,9 @@ class ProcessNotificationUseCaseTest {
         contactRepo = FakeContactFilterRepository()
         deviceRepo = FakeBluetoothDeviceRepository()
         btController = FakeBluetoothController()
+        phoneVibrator = FakePhoneVibrator()
         appSettings = FakeAppSettingsProvider()
-        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, appSettings)
+        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings)
     }
 
     // ── Scenario 1: un-watched app ───────────────────────────────────────────
@@ -207,7 +210,7 @@ class ProcessNotificationUseCaseTest {
     fun `FIRST_WINS mode sends to first device only`() =
         runTest {
             appSettings = FakeAppSettingsProvider(mode = MultiDeviceMode.FIRST_WINS)
-            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, appSettings)
+            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings)
 
             appRepo.upsert(watchedApp())
             deviceRepo.upsert(alertDevice)

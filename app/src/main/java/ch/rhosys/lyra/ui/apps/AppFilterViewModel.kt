@@ -2,6 +2,7 @@ package ch.rhosys.lyra.ui.apps
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.NotificationHistoryEntry
@@ -26,6 +27,7 @@ class AppFilterViewModel
         private val appRepo: AppFilterRepository,
         private val contactRepo: ContactFilterRepository,
         private val historyRepo: NotificationHistoryRepository,
+        private val phoneVibrator: PhoneVibrator,
     ) : ViewModel() {
         val apps: StateFlow<List<AppFilter>> =
             appRepo
@@ -159,6 +161,11 @@ class AppFilterViewModel
                 contactRepo.upsert(contact.copy(vibrationMode = mode))
                 refreshContacts(contact.packageName)
             }
+        }
+
+        /** Plays [mode] on the phone's vibrator so the user can feel it while picking a mode. */
+        fun demoVibration(mode: VibrationMode) {
+            viewModelScope.launch { phoneVibrator.sendVibration(mode.blocks) }
         }
 
         private suspend fun refreshContacts(packageName: String) {
