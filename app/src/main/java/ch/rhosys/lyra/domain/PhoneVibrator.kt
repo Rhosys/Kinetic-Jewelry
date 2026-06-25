@@ -1,15 +1,14 @@
 package ch.rhosys.lyra.domain
 
-import ch.rhosys.lyra.domain.model.VibrationBlock
-
 /**
- * The phone's own vibrator. Unlike [BluetoothController] devices it is never paired, scanned
- * for, or enabled/disabled by the user — it's always available, so every trigger (realtime
- * notification, debug screen, settings demo) calls it directly and explicitly.
+ * The phone's own vibrator. It implements the same [BluetoothController] interface as BLE/Wear
+ * devices, but is injected directly rather than aggregated into the paired/connected device
+ * lists — the phone is always available, so it's never scanned for, paired, or enabled/disabled
+ * by the user, and every trigger (realtime notification, debug screen, settings demo) calls it
+ * explicitly instead of going through the alert-enabled device priority dispatch.
  */
-interface PhoneVibrator {
-    suspend fun sendVibration(
-        blocks: List<VibrationBlock>,
-        repeat: Int = 1,
-    ): Result<Unit>
+interface PhoneVibrator : BluetoothController {
+    companion object {
+        const val ADDRESS = "phone"
+    }
 }
