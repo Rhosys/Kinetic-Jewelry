@@ -2,6 +2,7 @@ package ch.rhosys.lyra.domain.usecase
 
 import ch.rhosys.lyra.domain.AppSettingsProvider
 import ch.rhosys.lyra.domain.BluetoothController
+import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.MultiDeviceMode
 import ch.rhosys.lyra.domain.model.VibrationMode
@@ -23,6 +24,7 @@ class ProcessNotificationUseCase
         private val contactFilterRepository: ContactFilterRepository,
         private val bluetoothDeviceRepository: BluetoothDeviceRepository,
         private val bluetoothController: BluetoothController,
+        private val phoneVibrator: PhoneVibrator,
         private val appSettings: AppSettingsProvider,
     ) {
         suspend fun execute(
@@ -70,6 +72,10 @@ class ProcessNotificationUseCase
                 effectiveMode = modeOverride ?: appFilter.vibrationMode
             }
 
+            // The phone is always available and isn't part of the alert-enabled device list —
+            // it vibrates unconditionally, independent of whatever BLE/Wear devices are configured.
+            phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, effectiveMode.blocks)
+
             val allAlertDevices = bluetoothDeviceRepository.observeAlertEnabled().first()
             val userTimeoutMs = appSettings.connectionTimeoutMs.first()
             val multiDeviceMode = appSettings.multiDeviceMode.first()
@@ -105,7 +111,7 @@ class ProcessNotificationUseCase
             val sorted = devices.sortedByDescending { it.lastSuccessAt ?: 0L }
             for (device in sorted) {
                 val timeoutMs = effectiveTimeout(device, userTimeoutMs)
-                val result = bluetoothController.sendVibration(device.address, mode, timeoutMs)
+                val result = bluetoothController.sendVibration(device.address, mode.blocks, timeoutMs = timeoutMs)
                 if (result.isSuccess) {
                     bluetoothDeviceRepository.recordSuccess(device.address)
                     break
@@ -126,7 +132,7 @@ class ProcessNotificationUseCase
                     devices.map { device ->
                         val timeoutMs = effectiveTimeout(device, userTimeoutMs)
                         launch {
-                            val result = bluetoothController.sendVibration(device.address, mode, timeoutMs)
+                            val result = bluetoothController.sendVibration(device.address, mode.blocks, timeoutMs = timeoutMs)
                             // Skip recording if this coroutine was cancelled (post-ACK window expired)
                             if (isActive) {
                                 if (result.isSuccess) {

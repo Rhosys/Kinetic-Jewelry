@@ -5,7 +5,6 @@ import ch.rhosys.lyra.data.wearos.WearOsController
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.VibrationBlock
-import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,11 +26,11 @@ class CompositeBluetoothController
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
         override val pairedDevices: StateFlow<List<BluetoothDeviceInfo>> =
-            combine(bleController.pairedDevices, wearController.wearNodes) { ble, wear -> ble + wear }
+            combine(bleController.pairedDevices, wearController.wearNodes, ::excludeWearOsDuplicates)
                 .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
         override val connectedDevices: StateFlow<List<BluetoothDeviceInfo>> =
-            combine(bleController.connectedDevices, wearController.wearNodes) { ble, wear -> ble + wear }
+            combine(bleController.connectedDevices, wearController.wearNodes, ::excludeWearOsDuplicates)
                 .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
         override val scanResults: StateFlow<List<BluetoothDeviceInfo>> =
@@ -54,26 +53,30 @@ class CompositeBluetoothController
 
         override suspend fun sendVibration(
             address: String,
-            mode: VibrationMode,
-            timeoutMs: Long,
-        ): Result<Unit> =
-            if (address.startsWith(WEAR_ADDRESS_PREFIX)) {
-                wearController.sendVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), mode, timeoutMs)
-            } else {
-                bleController.sendVibration(address, mode, timeoutMs)
-            }
-
-        override suspend fun sendRawVibration(
-            address: String,
             blocks: List<VibrationBlock>,
             repeat: Int,
             timeoutMs: Long,
         ): Result<Unit> =
             if (address.startsWith(WEAR_ADDRESS_PREFIX)) {
-                wearController.sendRawVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), blocks, repeat, timeoutMs)
+                wearController.sendVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), blocks, repeat, timeoutMs)
             } else {
-                bleController.sendRawVibration(address, blocks, repeat, timeoutMs)
+                bleController.sendVibration(address, blocks, repeat, timeoutMs)
             }
 
         override fun releaseResources() = bleController.releaseResources()
     }
+
+/**
+ * The Wear OS API and the classic Bluetooth bonded-device list both surface the same physical
+ * watch, but with unrelated identifiers (a Wearable node id vs. a Bluetooth MAC address) — there's
+ * no shared key to match them on. Display name is the only field both sides agree on, so a BLE
+ * entry is treated as the watch's raw radio link and dropped whenever a Wear OS node already
+ * reports that name.
+ */
+private fun excludeWearOsDuplicates(
+    ble: List<BluetoothDeviceInfo>,
+    wear: List<BluetoothDeviceInfo>,
+): List<BluetoothDeviceInfo> {
+    val wearNames = wear.map { it.name.lowercase() }.toSet()
+    return ble.filter { it.name.lowercase() !in wearNames } + wear
+}
