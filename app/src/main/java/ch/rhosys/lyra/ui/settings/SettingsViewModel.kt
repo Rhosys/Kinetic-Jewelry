@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,36 +35,66 @@ class SettingsViewModel
         private val logger: AppLogger,
         private val appSettings: AppSettings,
     ) : ViewModel() {
-        private val _listenerEnabled = MutableStateFlow(checkListenerEnabled())
+        // Anything that throws while the Settings tab is loading lands here instead of
+        // crashing the app — the screen observes this and shows a copyable error dialog.
+        private val _loadError = MutableStateFlow<Throwable?>(null)
+        val loadError: StateFlow<Throwable?> = _loadError.asStateFlow()
+
+        private val _listenerEnabled = MutableStateFlow(safeCheckListenerEnabled())
         val listenerEnabled: StateFlow<Boolean> = _listenerEnabled.asStateFlow()
 
         val listenerConnected: StateFlow<Boolean> =
             eventBus.listenerConnected
+                .catch { e -> _loadError.value = e; emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
         val logEntries: StateFlow<List<LogEntry>> =
             logger.entries
+                .catch { e -> _loadError.value = e; emit(emptyList()) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-        private val _batteryOptimizationIgnored = MutableStateFlow(checkBatteryOptimization())
+        private val _batteryOptimizationIgnored = MutableStateFlow(safeCheckBatteryOptimization())
         val batteryOptimizationIgnored: StateFlow<Boolean> = _batteryOptimizationIgnored.asStateFlow()
 
         val connectionTimeoutMs: StateFlow<Long> =
             appSettings.connectionTimeoutMs
+                .catch { e -> _loadError.value = e; emit(AppSettingsProvider.DEFAULT_TIMEOUT_MS) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettingsProvider.DEFAULT_TIMEOUT_MS)
 
         val multiDeviceMode: StateFlow<MultiDeviceMode> =
             appSettings.multiDeviceMode
+                .catch { e -> _loadError.value = e; emit(MultiDeviceMode.ALL_DEVICES) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MultiDeviceMode.ALL_DEVICES)
 
         val autoReEnable24h: StateFlow<Boolean> =
             appSettings.autoReEnable24h
+                .catch { e -> _loadError.value = e; emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
         fun refreshStatus() {
-            _listenerEnabled.value = checkListenerEnabled()
-            _batteryOptimizationIgnored.value = checkBatteryOptimization()
+            _listenerEnabled.value = safeCheckListenerEnabled()
+            _batteryOptimizationIgnored.value = safeCheckBatteryOptimization()
         }
+
+        fun clearLoadError() {
+            _loadError.value = null
+        }
+
+        private fun safeCheckListenerEnabled(): Boolean =
+            try {
+                checkListenerEnabled()
+            } catch (e: Throwable) {
+                _loadError.value = e
+                false
+            }
+
+        private fun safeCheckBatteryOptimization(): Boolean =
+            try {
+                checkBatteryOptimization()
+            } catch (e: Throwable) {
+                _loadError.value = e
+                false
+            }
 
         private fun checkListenerEnabled(): Boolean =
             NotificationManagerCompat
