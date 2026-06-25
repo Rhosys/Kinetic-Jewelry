@@ -82,7 +82,7 @@ class DeviceManagerViewModel
 
         fun testDevice(address: String) {
             viewModelScope.launch {
-                val result = bluetoothController.sendVibration(address, VibrationMode.SHORT_PULSE)
+                val result = bluetoothController.sendVibration(address, VibrationMode.SHORT_PULSE.blocks)
                 if (result.isFailure) {
                     _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
                 } else {

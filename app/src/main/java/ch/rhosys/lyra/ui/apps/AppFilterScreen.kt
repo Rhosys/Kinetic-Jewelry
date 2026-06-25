@@ -52,7 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.VibrationMode
-import ch.rhosys.lyra.ui.util.previewVibration
+import ch.rhosys.lyra.data.phone.previewVibration
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @Composable

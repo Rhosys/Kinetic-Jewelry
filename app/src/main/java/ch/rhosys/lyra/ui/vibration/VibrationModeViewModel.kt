@@ -32,7 +32,7 @@ class VibrationModeViewModel @Inject constructor(
         viewModelScope.launch {
             if (alertDevices.value.isEmpty()) return@launch
             alertDevices.value.forEach { device ->
-                val result = bluetoothController.sendVibration(device.address, mode)
+                val result = bluetoothController.sendVibration(device.address, mode.blocks)
                 if (result.isFailure) {
                     _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
                 }

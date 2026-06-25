@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.collectLatest
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DebugVibrationScreen(vm: DebugVibrationViewModel = hiltViewModel()) {
-    val alertDevices by vm.alertDevices.collectAsState()
     val sequence by vm.sequence.collectAsState()
     val repeat by vm.repeat.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -62,7 +61,10 @@ fun DebugVibrationScreen(vm: DebugVibrationViewModel = hiltViewModel()) {
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
         ) {
-            Text("Connected devices: ${alertDevices.size}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "This screen vibrates the phone only — it never sends to BLE or Wear OS devices.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 

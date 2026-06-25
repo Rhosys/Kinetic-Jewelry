@@ -90,7 +90,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.LONG_PULSE, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.LONG_PULSE.blocks, btController.sentCommands[0].blocks)
             assertNull(contactRepo.get("com.example", "", "Alice"))
         }
 
@@ -106,7 +106,7 @@ class ProcessNotificationUseCaseTest {
 
             assertNull("Unknown sender must not be auto-added", contactRepo.get("com.example", "", "Alice"))
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.HEARTBEAT, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.HEARTBEAT.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 5: explicit mode override on contact ────────────────────────
@@ -121,7 +121,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.SOS, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.SOS.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 6: contact isWatched=false ──────────────────────────────────
@@ -150,7 +150,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "Work", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.DOUBLE_TAP, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.DOUBLE_TAP.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 8: sender-within-group overrides group rule ─────────────────
@@ -166,7 +166,7 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "Work", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.ESCALATING, btController.sentCommands[0].mode)
+            assertEquals(VibrationMode.ESCALATING.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 9: multiple alert-enabled devices ───────────────────────────

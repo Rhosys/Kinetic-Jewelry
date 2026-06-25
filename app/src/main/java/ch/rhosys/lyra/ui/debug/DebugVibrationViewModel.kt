@@ -1,38 +1,32 @@
 package ch.rhosys.lyra.ui.debug
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.rhosys.lyra.domain.BluetoothController
-import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
+import ch.rhosys.lyra.data.phone.PHONE_ADDRESS
+import ch.rhosys.lyra.data.phone.PhoneVibrationController
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
-import ch.rhosys.lyra.domain.repository.BluetoothDeviceRepository
-import ch.rhosys.lyra.ui.util.previewVibration
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * The one exception to the unified [ch.rhosys.lyra.domain.BluetoothController] dispatch — this
+ * screen builds an arbitrary, debug-only block sequence and sends it explicitly to the phone's
+ * own vibrator only, never to BLE jewelry or Wear OS devices.
+ */
 @HiltViewModel
 class DebugVibrationViewModel
     @Inject
     constructor(
-        deviceRepo: BluetoothDeviceRepository,
-        private val bluetoothController: BluetoothController,
-        @ApplicationContext private val context: Context,
+        private val phoneController: PhoneVibrationController,
     ) : ViewModel() {
-        val alertDevices: StateFlow<List<BluetoothDeviceInfo>> = deviceRepo.observeAlertEnabled()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
         private val _sequence = MutableStateFlow<List<VibrationBlock>>(emptyList())
         val sequence: StateFlow<List<VibrationBlock>> = _sequence.asStateFlow()
 
@@ -71,18 +65,12 @@ class DebugVibrationViewModel
                     _snackbar.emit("Sequence must have at least 3 blocks")
                     return@launch
                 }
-                previewVibration(context, blocks, repeatCount)
-                if (alertDevices.value.isEmpty()) {
-                    _snackbar.emit("No device connected — add one in the Devices tab")
-                    return@launch
+                val result = phoneController.sendVibration(PHONE_ADDRESS, blocks, repeatCount)
+                if (result.isFailure) {
+                    _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
+                } else {
+                    _snackbar.emit("Vibrated phone ($repeatCount×)")
                 }
-                alertDevices.value.forEach { device ->
-                    val result = bluetoothController.sendRawVibration(device.address, blocks, repeatCount)
-                    if (result.isFailure) {
-                        _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
-                    }
-                }
-                _snackbar.emit("Sent to ${alertDevices.value.size} device(s)")
             }
         }
     }
