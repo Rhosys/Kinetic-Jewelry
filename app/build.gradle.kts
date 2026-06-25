@@ -31,6 +31,11 @@ tasks.matching { Regex("merge\\w*Assets").matches(it.name) }.configureEach {
     dependsOn(copyBleProtocolJson)
 }
 
+// All lint tasks may inspect the generated assets directory.
+tasks.matching { Regex("(lint|generateLint|generate\\w*Lint)\\w*").matches(it.name) }.configureEach {
+    dependsOn(copyBleProtocolJson)
+}
+
 android {
     namespace = "ch.rhosys.lyra"
     compileSdk = 35
