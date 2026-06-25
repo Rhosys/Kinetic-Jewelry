@@ -15,7 +15,7 @@ class VibrationPacketBuilderTest {
     // ── Packet structure ─────────────────────────────────────────────────────
 
     @Test
-    fun `single-block mode produces one packet`() {
+    fun `SHORT_PULSE produces one packet`() {
         val packets = builder.buildPackets(VibrationMode.SHORT_PULSE, ProtocolVersion.V1)
         assertEquals(1, packets.size)
     }
@@ -31,11 +31,21 @@ class VibrationPacketBuilderTest {
 
     @Test
     fun `packet body contains packed block IDs after header`() {
-        val packets = builder.buildPackets(VibrationMode.SHORT_PULSE, ProtocolVersion.V1)
+        val packets = builder.buildPackets(listOf(VibrationBlock.SHORT_BUZZ), ProtocolVersion.V1)
         val bytes = packets[0].first
         assertEquals(4, bytes.size)  // 3-byte header + 1 packed byte (single nibble + pad)
         val expectedByte = (VibrationBlock.SHORT_BUZZ.id.toInt() shl 4).toByte()
         assertEquals(expectedByte, bytes[3])
+    }
+
+    @Test
+    fun `SHORT_PULSE packs its two buzz-pause pairs into two bytes`() {
+        val packets = builder.buildPackets(VibrationMode.SHORT_PULSE, ProtocolVersion.V1)
+        val bytes = packets[0].first
+        assertEquals(5, bytes.size)  // 3-byte header + 2 packed bytes (4 nibbles)
+        val expectedByte = ((VibrationBlock.SHORT_BUZZ.id.toInt() shl 4) or VibrationBlock.SHORT_PAUSE.id.toInt()).toByte()
+        assertEquals(expectedByte, bytes[3])
+        assertEquals(expectedByte, bytes[4])
     }
 
     @Test
@@ -125,7 +135,7 @@ class VibrationPacketBuilderTest {
 
     @Test
     fun `single-block packet is exactly 4 bytes`() {
-        val packets = builder.buildPackets(VibrationMode.SHORT_PULSE, ProtocolVersion.V1)
+        val packets = builder.buildPackets(listOf(VibrationBlock.SHORT_BUZZ), ProtocolVersion.V1)
         assertEquals(4, packets[0].first.size)
     }
 

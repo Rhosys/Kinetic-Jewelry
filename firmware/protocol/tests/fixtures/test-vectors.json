@@ -14,7 +14,7 @@
   "cases": [
     {
       "id": "short-pulse",
-      "description": "VibrationMode.SHORT_PULSE — single short buzz, packed alone in one byte",
+      "description": "Single short buzz, packed alone in one byte",
       "block_ids": [2],
       "repeat": 1,
       "bytes_hex": "01 01 01 20",
@@ -24,7 +24,7 @@
     },
     {
       "id": "long-pulse",
-      "description": "VibrationMode.LONG_PULSE — single long buzz, packed alone in one byte",
+      "description": "Single long buzz, packed alone in one byte",
       "block_ids": [4],
       "repeat": 1,
       "bytes_hex": "01 01 01 40",
