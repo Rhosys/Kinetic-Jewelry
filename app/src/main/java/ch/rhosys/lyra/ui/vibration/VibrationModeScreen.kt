@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.VibrationMode
-import ch.rhosys.lyra.ui.util.previewVibrationTwice
+import ch.rhosys.lyra.ui.util.previewVibration
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -50,7 +50,7 @@ fun VibrationModeScreen(vm: VibrationModeViewModel = hiltViewModel()) {
                 ModeCard(
                     mode = mode,
                     onTest = {
-                        scope.launch { previewVibrationTwice(context, mode) }
+                        scope.launch { previewVibration(context, mode.blocks, repeat = 2) }
                         vm.testMode(mode)
                     },
                 )

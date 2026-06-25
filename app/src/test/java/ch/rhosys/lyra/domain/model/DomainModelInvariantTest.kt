@@ -64,6 +64,17 @@ class DomainModelInvariantTest {
     }
 
     @Test
+    fun `motorOn is true only for blocks with id below 0xA`() {
+        VibrationBlock.entries.forEach { block ->
+            assertEquals(
+                "${block.name}.motorOn mismatch",
+                block.id.toInt() < 0xA,
+                block.motorOn,
+            )
+        }
+    }
+
+    @Test
     fun `pause blocks have shorter duration than buzz blocks at same tier`() {
         assertTrue(VibrationBlock.SHORT_PAUSE.durationMs < VibrationBlock.SHORT_BUZZ.durationMs)
         assertTrue(VibrationBlock.MEDIUM_PAUSE.durationMs < VibrationBlock.MEDIUM_BUZZ.durationMs)
@@ -95,6 +106,20 @@ class DomainModelInvariantTest {
     fun `all stableIds are positive`() {
         VibrationMode.entries.forEach { mode ->
             assertTrue("${mode.name}.stableId must be > 0", mode.stableId > 0)
+        }
+    }
+
+    @Test
+    fun `every mode's blocks strictly alternate motor on and off`() {
+        VibrationMode.entries.forEach { mode ->
+            mode.blocks.zipWithNext().forEach { (a, b) ->
+                assertNotEquals(
+                    "${mode.name} has two consecutive ${if (a.motorOn) "on" else "off"} blocks " +
+                        "(${a.name} followed by ${b.name}) — blocks must alternate buzz/pause",
+                    a.motorOn,
+                    b.motorOn,
+                )
+            }
         }
     }
 

@@ -9,7 +9,8 @@ import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.delay
 
-private const val TEST_REPEAT_DELAY_MS = 1000L
+/** Gap between repeat iterations — kept out of the waveform itself, see [previewVibration]. */
+private const val REPEAT_GAP_MS = 200L
 
 private fun vibratorOf(context: Context): Vibrator =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -26,21 +27,23 @@ private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
     if (blocks.size == 1) {
         return VibrationEffect.createOneShot(blocks[0].durationMs.toLong(), VibrationEffect.DEFAULT_AMPLITUDE)
     }
-    // createWaveform(timings, repeat) alternates off/on starting with off.
-    // Prepend 0ms so the pattern starts vibrating immediately, then each
-    // block duration follows. All VibrationMode patterns already alternate
-    // buzz→pause→buzz so the off/on assignment is always correct.
-    val timings = longArrayOf(0L) + blocks.map { it.durationMs.toLong() }.toLongArray()
-    return VibrationEffect.createWaveform(timings, -1)
+    val timings = blocks.map { it.durationMs.toLong() }.toLongArray()
+    val amplitudes = blocks.map { if (it.motorOn) VibrationEffect.DEFAULT_AMPLITUDE else 0 }.toIntArray()
+    return VibrationEffect.createWaveform(timings, amplitudes, -1)
 }
 
-fun previewVibration(
+suspend fun previewVibration(
     context: Context,
     mode: VibrationMode,
 ) = previewVibration(context, mode.blocks)
 
-/** Plays an arbitrary block sequence on the phone's own vibrator, repeated `repeat` times. */
-fun previewVibration(
+/**
+ * Plays a block sequence on the phone's own vibrator, repeated `repeat` times. The pause
+ * between iterations is a real delay between separate [Vibrator.vibrate] calls, not a block
+ * baked into the waveform — that way the waveform itself never has to encode anything other
+ * than the mode's own alternating buzz/pause blocks.
+ */
+suspend fun previewVibration(
     context: Context,
     blocks: List<VibrationBlock>,
     repeat: Int = 1,
@@ -48,23 +51,12 @@ fun previewVibration(
     if (blocks.isEmpty()) return
     val vibrator = vibratorOf(context)
     if (!vibrator.hasVibrator()) return
-    val sequence =
-        List(repeat.coerceAtLeast(1)) { blocks }
-            .reduce { acc, next -> acc + VibrationBlock.MEDIUM_PAUSE + next }
-    vibrator.vibrate(toWaveform(sequence))
+    val waveform = toWaveform(blocks)
+    val totalDurationMs = blocks.sumOf { it.durationMs }.toLong()
+    val repeatCount = repeat.coerceAtLeast(1)
+    for (i in 0 until repeatCount) {
+        vibrator.vibrate(waveform)
+        if (i < repeatCount - 1) delay(totalDurationMs + REPEAT_GAP_MS)
+    }
 }
 
-/**
- * Plays the pattern on the phone, waits a beat, then plays it again — mirroring how the
- * pattern repeats on the device so the user can feel what they're about to send.
- */
-suspend fun previewVibrationTwice(
-    context: Context,
-    mode: VibrationMode,
-) {
-    val vibrator = vibratorOf(context)
-    if (!vibrator.hasVibrator()) return
-    vibrator.vibrate(toWaveform(mode.blocks))
-    delay(mode.totalDurationMs + TEST_REPEAT_DELAY_MS)
-    vibrator.vibrate(toWaveform(mode.blocks))
-}
