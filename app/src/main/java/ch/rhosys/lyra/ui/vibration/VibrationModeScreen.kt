@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ch.rhosys.lyra.domain.model.VibrationMode
-import ch.rhosys.lyra.ui.util.previewVibration
+import ch.rhosys.lyra.data.phone.previewVibration
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 

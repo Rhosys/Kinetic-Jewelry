@@ -93,7 +93,7 @@ class DeviceManagerViewModelTest {
 
         assertEquals(1, controller.sentCommands.size)
         assertEquals("AA:BB:CC:DD:EE:FF", controller.sentCommands[0].address)
-        assertEquals(VibrationMode.SHORT_PULSE, controller.sentCommands[0].mode)
+        assertEquals(VibrationMode.SHORT_PULSE.blocks, controller.sentCommands[0].blocks)
     }
 
     @Test

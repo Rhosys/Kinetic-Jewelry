@@ -7,28 +7,10 @@ import android.os.VibratorManager
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 
-private const val VIBRATE_PATH = "/kinetic/vibrate"
-private const val VIBRATE_RAW_PATH = "/kinetic/vibrate_raw"
+private const val VIBRATE_PATH = "/kinetic/vibrate_raw"
 
 /** Gap between repeat iterations — a real delay between separate vibrate() calls, never baked into a waveform. */
 private const val REPEAT_GAP_MS = 200L
-
-// Mirrors VibrationMode/VibrationBlock on the phone — stableId → (timings, amplitudes)
-private val WAVEFORMS: Map<Int, Pair<LongArray, IntArray>> =
-    mapOf(
-        1 to (longArrayOf(100, 80, 100, 80) to intArrayOf(200, 0, 200, 0)), // SHORT_PULSE
-        2 to (longArrayOf(500, 200, 500, 200) to intArrayOf(200, 0, 200, 0)), // LONG_PULSE
-        3 to (longArrayOf(40, 80, 40) to intArrayOf(200, 0, 200)), // DOUBLE_TAP
-        4 to (longArrayOf(100, 80, 250, 600) to intArrayOf(200, 0, 200, 0)), // HEARTBEAT
-        5 to (
-            longArrayOf(40, 80, 100, 80, 250, 80, 500) // ESCALATING
-                to intArrayOf(200, 0, 200, 0, 200, 0, 200)
-        ),
-        6 to ( // SOS
-            longArrayOf(40, 80, 40, 80, 40, 200, 100, 80, 100, 80, 100, 200, 40, 80, 40, 80, 40, 600)
-                to intArrayOf(200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0)
-        ),
-    )
 
 // Mirrors VibrationBlock on the phone — block id → (durationMs, amplitude)
 private val BLOCK_DURATIONS: Map<Byte, Pair<Long, Int>> =
@@ -54,13 +36,7 @@ class VibrationListenerService : WearableListenerService() {
             }
 
     override fun onMessageReceived(event: MessageEvent) {
-        when (event.path) {
-            VIBRATE_PATH -> {
-                val waveform = WAVEFORMS[event.data.firstOrNull()?.toInt() ?: return] ?: return
-                vibrator.vibrate(VibrationEffect.createWaveform(waveform.first, waveform.second, -1))
-            }
-            VIBRATE_RAW_PATH -> playRawSequence(event.data)
-        }
+        if (event.path == VIBRATE_PATH) playRawSequence(event.data)
     }
 
     /**

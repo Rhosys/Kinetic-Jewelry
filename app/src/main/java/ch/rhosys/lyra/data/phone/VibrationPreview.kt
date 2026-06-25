@@ -1,4 +1,4 @@
-package ch.rhosys.lyra.ui.util
+package ch.rhosys.lyra.data.phone
 
 import android.content.Context
 import android.os.Build
@@ -36,7 +36,8 @@ suspend fun previewVibration(
  * Plays a block sequence on the phone's own vibrator, repeated `repeat` times. The pause
  * between iterations is a real delay between separate [Vibrator.vibrate] calls, not a block
  * baked into the waveform — that way the waveform itself never has to encode anything other
- * than the mode's own alternating buzz/pause blocks.
+ * than the mode's own alternating buzz/pause blocks. This is the only place in the app that
+ * touches the OS vibrator APIs directly — [PhoneVibrationController] delegates here.
  */
 suspend fun previewVibration(
     context: Context,
@@ -58,4 +59,3 @@ suspend fun previewVibration(
         if (i < repeatCount - 1) delay(totalDurationMs + REPEAT_GAP_MS)
     }
 }
-

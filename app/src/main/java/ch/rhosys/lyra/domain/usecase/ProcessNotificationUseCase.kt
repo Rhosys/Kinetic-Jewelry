@@ -105,7 +105,7 @@ class ProcessNotificationUseCase
             val sorted = devices.sortedByDescending { it.lastSuccessAt ?: 0L }
             for (device in sorted) {
                 val timeoutMs = effectiveTimeout(device, userTimeoutMs)
-                val result = bluetoothController.sendVibration(device.address, mode, timeoutMs)
+                val result = bluetoothController.sendVibration(device.address, mode.blocks, timeoutMs = timeoutMs)
                 if (result.isSuccess) {
                     bluetoothDeviceRepository.recordSuccess(device.address)
                     break
@@ -126,7 +126,7 @@ class ProcessNotificationUseCase
                     devices.map { device ->
                         val timeoutMs = effectiveTimeout(device, userTimeoutMs)
                         launch {
-                            val result = bluetoothController.sendVibration(device.address, mode, timeoutMs)
+                            val result = bluetoothController.sendVibration(device.address, mode.blocks, timeoutMs = timeoutMs)
                             // Skip recording if this coroutine was cancelled (post-ACK window expired)
                             if (isActive) {
                                 if (result.isSuccess) {

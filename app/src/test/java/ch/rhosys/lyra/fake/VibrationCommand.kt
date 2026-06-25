@@ -1,9 +1,10 @@
 package ch.rhosys.lyra.fake
 
-import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.domain.model.VibrationBlock
 
 data class VibrationCommand(
     val address: String,
-    val mode: VibrationMode,
+    val blocks: List<VibrationBlock>,
+    val repeat: Int,
     val sentAt: Long,
 )
