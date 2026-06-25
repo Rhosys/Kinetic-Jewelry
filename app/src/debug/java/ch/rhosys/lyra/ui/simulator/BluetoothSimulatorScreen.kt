@@ -73,7 +73,7 @@ private fun CommandLogRow(cmd: VibrationCommand) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
     ) {
         Column {
-            Text("${cmd.mode.displayName} → ${cmd.address}", style = MaterialTheme.typography.bodyMedium)
+            Text("${cmd.blocks.size} blocks ×${cmd.repeat} → ${cmd.address}", style = MaterialTheme.typography.bodyMedium)
             Text(time, style = MaterialTheme.typography.labelSmall)
         }
     }

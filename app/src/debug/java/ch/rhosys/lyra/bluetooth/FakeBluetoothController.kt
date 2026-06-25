@@ -3,7 +3,6 @@ package ch.rhosys.lyra.bluetooth
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.VibrationBlock
-import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +11,8 @@ import javax.inject.Singleton
 
 data class VibrationCommand(
     val address: String,
-    val mode: VibrationMode,
+    val blocks: List<VibrationBlock>,
+    val repeat: Int,
     val sentAt: Long,
 )
 
@@ -47,23 +47,17 @@ class FakeBluetoothController
 
         override suspend fun sendVibration(
             address: String,
-            mode: VibrationMode,
+            blocks: List<VibrationBlock>,
+            repeat: Int,
             timeoutMs: Long,
         ): Result<Unit> {
-            _log.value = _log.value + VibrationCommand(address, mode, System.currentTimeMillis())
+            _log.value = _log.value + VibrationCommand(address, blocks, repeat, System.currentTimeMillis())
             return Result.success(Unit)
         }
 
         fun clearLog() {
             _log.value = emptyList()
         }
-
-        override suspend fun sendRawVibration(
-            address: String,
-            blocks: List<VibrationBlock>,
-            repeat: Int,
-            timeoutMs: Long,
-        ): Result<Unit> = Result.success(Unit)
 
         override fun releaseResources() = Unit
     }
