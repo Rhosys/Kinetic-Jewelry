@@ -39,13 +39,14 @@ class VibrationPacketBuilderTest {
     }
 
     @Test
-    fun `SHORT_PULSE packs its two buzz-pause pairs into two bytes`() {
+    fun `SHORT_PULSE packs its three buzz-pause pairs into three bytes`() {
         val packets = builder.buildPackets(VibrationMode.SHORT_PULSE, ProtocolVersion.V1)
         val bytes = packets[0].first
-        assertEquals(5, bytes.size)  // 3-byte header + 2 packed bytes (4 nibbles)
+        assertEquals(6, bytes.size)  // 3-byte header + 3 packed bytes (6 nibbles)
         val expectedByte = ((VibrationBlock.SHORT_BUZZ.id.toInt() shl 4) or VibrationBlock.SHORT_PAUSE.id.toInt()).toByte()
         assertEquals(expectedByte, bytes[3])
         assertEquals(expectedByte, bytes[4])
+        assertEquals(expectedByte, bytes[5])
     }
 
     @Test
