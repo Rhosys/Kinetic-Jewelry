@@ -1,6 +1,7 @@
 package ch.rhosys.lyra.data.phone
 
 import android.content.Context
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.VibrationBlock
@@ -16,6 +17,7 @@ class PhoneVibrationController
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val logger: AppLogger,
     ) : PhoneVibrator {
         private val noDevices = MutableStateFlow<List<BluetoothDeviceInfo>>(emptyList())
         override val pairedDevices: StateFlow<List<BluetoothDeviceInfo>> = noDevices.asStateFlow()
@@ -28,7 +30,9 @@ class PhoneVibrationController
             blocks: List<VibrationBlock>,
             repeat: Int,
             timeoutMs: Long,
-        ): Result<Unit> = runCatching { previewVibration(context, blocks, repeat) }
+        ): Result<Unit> =
+            runCatching { previewVibration(context, blocks, logger, repeat) }
+                .also { result -> result.onFailure { logger.error("Phone vibration failed", it) } }
 
         override fun startScan() = Unit
 

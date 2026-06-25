@@ -1,5 +1,6 @@
 package ch.rhosys.lyra.domain.usecase
 
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.domain.AppSettingsProvider
 import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.PhoneVibrator
@@ -26,6 +27,7 @@ class ProcessNotificationUseCase
         private val bluetoothController: BluetoothController,
         private val phoneVibrator: PhoneVibrator,
         private val appSettings: AppSettingsProvider,
+        private val logger: AppLogger,
     ) {
         suspend fun execute(
             packageName: String,
@@ -35,7 +37,10 @@ class ProcessNotificationUseCase
             if (contactName.isNullOrBlank()) return
 
             val appFilter = appFilterRepository.getByPackageName(packageName) ?: return
-            if (!appFilter.isWatched) return
+            if (!appFilter.isWatched) {
+                logger.info("Notification ignored: $packageName is not watched")
+                return
+            }
 
             val effectiveMode: VibrationMode
 
@@ -68,9 +73,14 @@ class ProcessNotificationUseCase
                     }
                 }
 
-                if (!effectiveIsWatched) return
+                if (!effectiveIsWatched) {
+                    logger.info("Notification ignored: $packageName/$contactName is not watched")
+                    return
+                }
                 effectiveMode = modeOverride ?: appFilter.vibrationMode
             }
+
+            logger.info("Notification matched: $packageName/$contactName → ${effectiveMode.displayName}")
 
             // The phone is always available and isn't part of the alert-enabled device list —
             // it vibrates unconditionally, independent of whatever BLE/Wear devices are configured.
@@ -95,8 +105,12 @@ class ProcessNotificationUseCase
                     }
                 }
 
-            if (activeDevices.isEmpty()) return
+            if (activeDevices.isEmpty()) {
+                logger.info("No active alert-enabled devices — phone-only vibration")
+                return
+            }
 
+            logger.info("Dispatching to ${activeDevices.size} device(s) via $multiDeviceMode")
             when (multiDeviceMode) {
                 MultiDeviceMode.FIRST_WINS -> dispatchFirstWins(activeDevices, effectiveMode, userTimeoutMs)
                 MultiDeviceMode.ALL_DEVICES -> dispatchAllDevices(activeDevices, effectiveMode, userTimeoutMs)
@@ -109,16 +123,19 @@ class ProcessNotificationUseCase
             userTimeoutMs: Long,
         ) {
             val sorted = devices.sortedByDescending { it.lastSuccessAt ?: 0L }
+            var succeeded = false
             for (device in sorted) {
                 val timeoutMs = effectiveTimeout(device, userTimeoutMs)
                 val result = bluetoothController.sendVibration(device.address, mode.blocks, timeoutMs = timeoutMs)
                 if (result.isSuccess) {
                     bluetoothDeviceRepository.recordSuccess(device.address)
+                    succeeded = true
                     break
                 } else {
                     bluetoothDeviceRepository.recordFailure(device.address)
                 }
             }
+            if (!succeeded) logger.warn("FIRST_WINS: all ${sorted.size} device(s) failed")
         }
 
         private suspend fun dispatchAllDevices(

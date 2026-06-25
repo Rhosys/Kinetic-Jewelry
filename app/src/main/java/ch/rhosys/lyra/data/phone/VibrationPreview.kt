@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import ch.rhosys.lyra.data.AppLogger
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.withoutTrailingPauses
 import kotlinx.coroutines.delay
@@ -36,11 +37,15 @@ private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
 suspend fun previewVibration(
     context: Context,
     blocks: List<VibrationBlock>,
+    logger: AppLogger,
     repeat: Int = 1,
 ) {
     if (blocks.isEmpty()) return
     val vibrator = vibratorOf(context)
-    if (!vibrator.hasVibrator()) return
+    if (!vibrator.hasVibrator()) {
+        logger.warn("Phone vibration skipped — device has no vibrator")
+        return
+    }
     // The waveform itself must never end in dead time — a trailing pause is
     // either an authoring mistake or a leftover from the old baked-in repeat
     // gap, neither of which belongs in a single play-through.
@@ -48,6 +53,7 @@ suspend fun previewVibration(
     val waveform = toWaveform(effectiveBlocks)
     val totalDurationMs = effectiveBlocks.sumOf { it.durationMs }.toLong()
     val repeatCount = repeat.coerceAtLeast(1)
+    logger.info("Phone vibration: ${effectiveBlocks.size} block(s), $repeatCount× ($totalDurationMs ms/cycle)")
     for (i in 0 until repeatCount) {
         vibrator.vibrate(waveform)
         if (i < repeatCount - 1) delay(totalDurationMs + REPEAT_GAP_MS)
