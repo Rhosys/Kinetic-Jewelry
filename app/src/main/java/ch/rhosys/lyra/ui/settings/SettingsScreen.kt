@@ -49,36 +49,25 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Entry point for the Settings tab. Every operation performed while this tab loads — ViewModel
- * acquisition, state collection, lifecycle effects — is wrapped so a failure shows a copyable
- * error popup instead of crashing the app. [hiltViewModel] is called via the default-parameter
- * mechanism in [SettingsScreen], so it must be guarded explicitly here rather than relying on a
- * try/catch placed around the rest of the function body, which would run too late to catch it.
+ * Entry point for the Settings tab. The Compose compiler disallows try/catch around composable
+ * function invocations entirely (not just in catch blocks), so [hiltViewModel] and
+ * [SettingsScreenContent] are called directly here. Load-time failures inside non-composable code
+ * (DataStore reads, lifecycle effects) are instead surfaced via [SettingsViewModel.loadError] and
+ * the [onError] callback below, both backed by plain try/catch in code that isn't itself a
+ * composable call.
  */
 @Composable
 fun SettingsScreen(onDebugVibrationsClick: () -> Unit = {}) {
     var localError by remember { mutableStateOf<Throwable?>(null) }
 
-    var vm: SettingsViewModel? = null
-    try {
-        vm = hiltViewModel()
-    } catch (e: Throwable) {
-        localError = e
-    }
+    val vm: SettingsViewModel = hiltViewModel()
+    val vmLoadError by vm.loadError.collectAsState()
 
-    val vmLoadError: Throwable? = if (vm != null) vm.loadError.collectAsState().value else null
-
-    if (vm != null && localError == null) {
-        try {
-            SettingsScreenContent(
-                vm = vm,
-                onDebugVibrationsClick = onDebugVibrationsClick,
-                onError = { e -> localError = e },
-            )
-        } catch (e: Throwable) {
-            localError = e
-        }
-    }
+    SettingsScreenContent(
+        vm = vm,
+        onDebugVibrationsClick = onDebugVibrationsClick,
+        onError = { e -> localError = e },
+    )
 
     val displayError = localError ?: vmLoadError
     if (displayError != null) {
@@ -86,7 +75,7 @@ fun SettingsScreen(onDebugVibrationsClick: () -> Unit = {}) {
             error = displayError,
             onDismiss = {
                 localError = null
-                vm?.clearLoadError()
+                vm.clearLoadError()
             },
         )
     }
