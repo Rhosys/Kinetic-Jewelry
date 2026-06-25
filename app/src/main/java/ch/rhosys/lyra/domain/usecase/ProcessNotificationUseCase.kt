@@ -74,7 +74,7 @@ class ProcessNotificationUseCase
 
             // The phone is always available and isn't part of the alert-enabled device list —
             // it vibrates unconditionally, independent of whatever BLE/Wear devices are configured.
-            phoneVibrator.sendVibration(effectiveMode.blocks)
+            phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, effectiveMode.blocks)
 
             val allAlertDevices = bluetoothDeviceRepository.observeAlertEnabled().first()
             val userTimeoutMs = appSettings.connectionTimeoutMs.first()

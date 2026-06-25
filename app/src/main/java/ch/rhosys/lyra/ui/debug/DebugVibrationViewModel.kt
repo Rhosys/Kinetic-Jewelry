@@ -60,7 +60,7 @@ class DebugVibrationViewModel
                     _snackbar.emit("Sequence must have at least 3 blocks")
                     return@launch
                 }
-                val result = phoneVibrator.sendVibration(blocks, repeatCount)
+                val result = phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, blocks, repeatCount)
                 if (result.isFailure) {
                     _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
                 } else {

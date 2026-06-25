@@ -165,7 +165,7 @@ class AppFilterViewModel
 
         /** Plays [mode] on the phone's vibrator so the user can feel it while picking a mode. */
         fun demoVibration(mode: VibrationMode) {
-            viewModelScope.launch { phoneVibrator.sendVibration(mode.blocks) }
+            viewModelScope.launch { phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, mode.blocks) }
         }
 
         private suspend fun refreshContacts(packageName: String) {
