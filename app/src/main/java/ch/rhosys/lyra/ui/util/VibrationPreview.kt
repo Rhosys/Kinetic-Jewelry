@@ -29,11 +29,7 @@ private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
     // createWaveform(timings, repeat) alternates off/on starting with off.
     // Prepend 0ms so the pattern starts vibrating immediately, then each
     // block duration follows. All VibrationMode patterns already alternate
-    // buzz→pause→buzz so the off/on assignment is always correct. Single-block
-    // modes (SHORT_PULSE, LONG_PULSE) go through this same call rather than
-    // createOneShot — they used to be special-cased onto createOneShot, but
-    // that carve-out was never confirmed against real hardware and is the
-    // likely source of the "doesn't vibrate" reports for those two modes.
+    // buzz→pause→buzz so the off/on assignment is always correct.
     val timings = longArrayOf(0L) + blocks.map { it.durationMs.toLong() }.toLongArray()
     return VibrationEffect.createWaveform(timings, -1)
 }
@@ -52,7 +48,9 @@ fun previewVibration(
     if (blocks.isEmpty()) return
     val vibrator = vibratorOf(context)
     if (!vibrator.hasVibrator()) return
-    val sequence = List(repeat.coerceAtLeast(1)) { blocks }.flatten()
+    val sequence =
+        List(repeat.coerceAtLeast(1)) { blocks }
+            .reduce { acc, next -> acc + VibrationBlock.MEDIUM_PAUSE + next }
     vibrator.vibrate(toWaveform(sequence))
 }
 
