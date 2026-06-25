@@ -7,26 +7,10 @@ import android.os.VibratorManager
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 
-private const val VIBRATE_PATH = "/kinetic/vibrate"
-private const val VIBRATE_RAW_PATH = "/kinetic/vibrate_raw"
-private const val REPEAT_GAP_MS = 200L
+private const val VIBRATE_PATH = "/kinetic/vibrate_raw"
 
-// Mirrors VibrationMode/VibrationBlock on the phone — stableId → (timings, amplitudes)
-private val WAVEFORMS: Map<Int, Pair<LongArray, IntArray>> =
-    mapOf(
-        1 to (longArrayOf(100, 80, 100, 80) to intArrayOf(200, 0, 200, 0)), // SHORT_PULSE
-        2 to (longArrayOf(500, 200, 500, 200) to intArrayOf(200, 0, 200, 0)), // LONG_PULSE
-        3 to (longArrayOf(40, 80, 40) to intArrayOf(200, 0, 200)), // DOUBLE_TAP
-        4 to (longArrayOf(100, 80, 250, 600) to intArrayOf(200, 0, 200, 0)), // HEARTBEAT
-        5 to (
-            longArrayOf(40, 80, 100, 80, 250, 80, 500) // ESCALATING
-                to intArrayOf(200, 0, 200, 0, 200, 0, 200)
-        ),
-        6 to ( // SOS
-            longArrayOf(40, 80, 40, 80, 40, 200, 100, 80, 100, 80, 100, 200, 40, 80, 40, 80, 40, 600)
-                to intArrayOf(200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0, 200, 0)
-        ),
-    )
+/** Gap between repeat iterations — a real delay between separate vibrate() calls, never baked into a waveform. */
+private const val REPEAT_GAP_MS = 200L
 
 // Mirrors VibrationBlock on the phone — block id → (durationMs, amplitude)
 private val BLOCK_DURATIONS: Map<Byte, Pair<Long, Int>> =
@@ -42,43 +26,39 @@ private val BLOCK_DURATIONS: Map<Byte, Pair<Long, Int>> =
     )
 
 class VibrationListenerService : WearableListenerService() {
-    override fun onMessageReceived(event: MessageEvent) {
-        val waveform =
-            when (event.path) {
-                VIBRATE_PATH -> WAVEFORMS[event.data.firstOrNull()?.toInt() ?: return]
-                VIBRATE_RAW_PATH -> decodeRawWaveform(event.data)
-                else -> null
-            } ?: return
-
-        val vibrator =
+    private val vibrator: Vibrator
+        get() =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 getSystemService(VibratorManager::class.java).defaultVibrator
             } else {
                 @Suppress("DEPRECATION")
                 getSystemService(Vibrator::class.java)
             }
-        vibrator.vibrate(VibrationEffect.createWaveform(waveform.first, waveform.second, -1))
+
+    override fun onMessageReceived(event: MessageEvent) {
+        if (event.path == VIBRATE_PATH) playRawSequence(event.data)
     }
 
-    /** [data] is `[repeat, blockId, blockId, …]`; iterations are joined by a medium pause. */
-    private fun decodeRawWaveform(data: ByteArray): Pair<LongArray, IntArray>? {
-        if (data.isEmpty()) return null
+    /**
+     * [data] is `[repeat, blockId, blockId, …]`. Each iteration is a separate [Vibrator.vibrate]
+     * call; the gap between iterations is a real delay on this thread (WearableListenerService
+     * callbacks run off the main thread), not a pause block folded into the waveform.
+     */
+    private fun playRawSequence(data: ByteArray) {
+        if (data.isEmpty()) return
         val repeatCount = data[0].toInt().coerceAtLeast(1)
         val blocks = data.drop(1).mapNotNull { BLOCK_DURATIONS[it] }
-        if (blocks.isEmpty()) return null
+        if (blocks.isEmpty()) return
 
-        val timings = mutableListOf<Long>()
-        val amplitudes = mutableListOf<Int>()
-        repeat(repeatCount) { i ->
-            if (i > 0) {
-                timings += REPEAT_GAP_MS
-                amplitudes += 0
-            }
-            blocks.forEach { (duration, amplitude) ->
-                timings += duration
-                amplitudes += amplitude
-            }
+        val timings = blocks.map { it.first }.toLongArray()
+        val amplitudes = blocks.map { it.second }.toIntArray()
+        val waveform = VibrationEffect.createWaveform(timings, amplitudes, -1)
+        val totalDurationMs = blocks.sumOf { it.first }
+
+        val vibrator = vibrator
+        for (i in 0 until repeatCount) {
+            vibrator.vibrate(waveform)
+            if (i < repeatCount - 1) Thread.sleep(totalDurationMs + REPEAT_GAP_MS)
         }
-        return timings.toLongArray() to amplitudes.toIntArray()
     }
 }

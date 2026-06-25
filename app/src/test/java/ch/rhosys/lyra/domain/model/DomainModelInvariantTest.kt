@@ -64,6 +64,17 @@ class DomainModelInvariantTest {
     }
 
     @Test
+    fun `motorOn is true only for blocks with id below 0xA`() {
+        VibrationBlock.entries.forEach { block ->
+            assertEquals(
+                "${block.name}.motorOn mismatch",
+                block.id.toInt() < 0xA,
+                block.motorOn,
+            )
+        }
+    }
+
+    @Test
     fun `pause blocks have shorter duration than buzz blocks at same tier`() {
         assertTrue(VibrationBlock.SHORT_PAUSE.durationMs < VibrationBlock.SHORT_BUZZ.durationMs)
         assertTrue(VibrationBlock.MEDIUM_PAUSE.durationMs < VibrationBlock.MEDIUM_BUZZ.durationMs)
@@ -99,9 +110,66 @@ class DomainModelInvariantTest {
     }
 
     @Test
+    fun `every mode's blocks strictly alternate motor on and off`() {
+        VibrationMode.entries.forEach { mode ->
+            mode.blocks.zipWithNext().forEach { (a, b) ->
+                assertNotEquals(
+                    "${mode.name} has two consecutive ${if (a.motorOn) "on" else "off"} blocks " +
+                        "(${a.name} followed by ${b.name}) — blocks must alternate buzz/pause",
+                    a.motorOn,
+                    b.motorOn,
+                )
+            }
+        }
+    }
+
+    @Test
     fun `no mode has an empty block list`() {
         VibrationMode.entries.forEach { mode ->
             assertTrue("${mode.name} must have at least one block", mode.blocks.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun `every mode has at least 3 blocks`() {
+        VibrationMode.entries.forEach { mode ->
+            assertTrue(
+                "${mode.name} must have at least 3 blocks — single-block or two-block modes are not allowed",
+                mode.blocks.size >= 3,
+            )
+        }
+    }
+
+    @Test
+    fun `withoutTrailingPauses strips trailing pause blocks`() {
+        val blocks = listOf(
+            VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
+            VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
+        )
+        assertEquals(
+            listOf(VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE, VibrationBlock.SHORT_BUZZ),
+            blocks.withoutTrailingPauses(),
+        )
+    }
+
+    @Test
+    fun `withoutTrailingPauses is a no-op when already ending in a buzz`() {
+        val blocks = listOf(VibrationBlock.CLICK, VibrationBlock.SHORT_PAUSE, VibrationBlock.CLICK)
+        assertEquals(blocks, blocks.withoutTrailingPauses())
+    }
+
+    @Test
+    fun `withoutTrailingPauses can return empty when every block is a pause`() {
+        val blocks = listOf(VibrationBlock.SHORT_PAUSE, VibrationBlock.MEDIUM_PAUSE)
+        assertTrue(blocks.withoutTrailingPauses().isEmpty())
+    }
+
+    @Test
+    fun `every mode's waveform never ends in a pause once trailing pauses are stripped`() {
+        VibrationMode.entries.forEach { mode ->
+            val effective = mode.blocks.withoutTrailingPauses()
+            assertTrue("${mode.name} must not strip down to an empty waveform", effective.isNotEmpty())
+            assertTrue("${mode.name}'s waveform must not end in a pause", effective.last().motorOn)
         }
     }
 

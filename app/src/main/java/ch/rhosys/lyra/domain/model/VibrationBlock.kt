@@ -13,4 +13,10 @@ enum class VibrationBlock(val id: Byte, val durationMs: Int, val since: Protocol
     SHORT_PAUSE    (0xA,  80,  V1),
     MEDIUM_PAUSE   (0xB, 200,  V1),
     LONG_PAUSE     (0xC, 600,  V1),
+    ;
+
+    val motorOn: Boolean get() = id.toInt() < 0xA
 }
+
+/** Drops trailing pause blocks — the played waveform should never end in dead time. */
+fun List<VibrationBlock>.withoutTrailingPauses(): List<VibrationBlock> = dropLastWhile { !it.motorOn }
