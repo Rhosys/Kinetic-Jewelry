@@ -7,6 +7,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.domain.model.withoutTrailingPauses
 import kotlinx.coroutines.delay
 
 /** Gap between repeat iterations — kept out of the waveform itself, see [previewVibration]. */
@@ -21,12 +22,6 @@ private fun vibratorOf(context: Context): Vibrator =
     }
 
 private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
-    // A single block is just a continuous buzz; createOneShot is the API meant
-    // for that and is honored consistently, whereas a 2-element createWaveform
-    // array ([0, duration]) is silently dropped by some OEM vibrator HALs.
-    if (blocks.size == 1) {
-        return VibrationEffect.createOneShot(blocks[0].durationMs.toLong(), VibrationEffect.DEFAULT_AMPLITUDE)
-    }
     val timings = blocks.map { it.durationMs.toLong() }.toLongArray()
     val amplitudes = blocks.map { if (it.motorOn) VibrationEffect.DEFAULT_AMPLITUDE else 0 }.toIntArray()
     return VibrationEffect.createWaveform(timings, amplitudes, -1)
@@ -51,8 +46,12 @@ suspend fun previewVibration(
     if (blocks.isEmpty()) return
     val vibrator = vibratorOf(context)
     if (!vibrator.hasVibrator()) return
-    val waveform = toWaveform(blocks)
-    val totalDurationMs = blocks.sumOf { it.durationMs }.toLong()
+    // The waveform itself must never end in dead time — a trailing pause is
+    // either an authoring mistake or a leftover from the old baked-in repeat
+    // gap, neither of which belongs in a single play-through.
+    val effectiveBlocks = blocks.withoutTrailingPauses().ifEmpty { blocks }
+    val waveform = toWaveform(effectiveBlocks)
+    val totalDurationMs = effectiveBlocks.sumOf { it.durationMs }.toLong()
     val repeatCount = repeat.coerceAtLeast(1)
     for (i in 0 until repeatCount) {
         vibrator.vibrate(waveform)

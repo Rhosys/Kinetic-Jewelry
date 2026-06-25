@@ -145,7 +145,11 @@ fun DebugVibrationScreen(vm: DebugVibrationViewModel = hiltViewModel()) {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-            Button(onClick = vm::vibrate, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = vm::vibrate,
+                enabled = sequence.size >= 3,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Text("Vibrate")
             }
         }
