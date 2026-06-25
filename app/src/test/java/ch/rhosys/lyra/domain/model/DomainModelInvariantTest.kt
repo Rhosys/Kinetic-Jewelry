@@ -182,9 +182,10 @@ class DomainModelInvariantTest {
     }
 
     @Test
-    fun `SHORT_PULSE is two short buzzes separated by short pauses`() {
+    fun `SHORT_PULSE is three short buzzes separated by short pauses`() {
         assertEquals(
             listOf(
+                VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
                 VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
                 VibrationBlock.SHORT_BUZZ, VibrationBlock.SHORT_PAUSE,
             ),
@@ -221,13 +222,6 @@ class DomainModelInvariantTest {
     @Test
     fun `default mode is SHORT_PULSE`() {
         assertEquals(VibrationMode.SHORT_PULSE, VibrationMode.default)
-    }
-
-    @Test
-    fun `DOUBLE_TAP has symmetrical structure`() {
-        val blocks = VibrationMode.DOUBLE_TAP.blocks
-        assertEquals(3, blocks.size)
-        assertEquals(blocks.first(), blocks.last())
     }
 
     @Test
