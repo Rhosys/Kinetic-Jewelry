@@ -147,13 +147,13 @@ class ProcessNotificationUseCaseTest {
     fun `group rule fires when sender has no explicit rule`() =
         runTest {
             appRepo.upsert(watchedApp(mode = VibrationMode.SHORT_PULSE, contactLevelEnabled = true))
-            contactRepo.upsert(ContactFilter("com.example", "Work", "", isWatched = true, VibrationMode.DOUBLE_TAP))
+            contactRepo.upsert(ContactFilter("com.example", "Work", "", isWatched = true, VibrationMode.LONG_PULSE))
             deviceRepo.upsert(alertDevice)
 
             useCase.execute("com.example", "Work", "Alice")
 
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.DOUBLE_TAP.blocks, btController.sentCommands[0].blocks)
+            assertEquals(VibrationMode.LONG_PULSE.blocks, btController.sentCommands[0].blocks)
         }
 
     // ── Scenario 8: sender-within-group overrides group rule ─────────────────
@@ -162,7 +162,7 @@ class ProcessNotificationUseCaseTest {
     fun `sender-specific rule overrides group rule`() =
         runTest {
             appRepo.upsert(watchedApp(mode = VibrationMode.SHORT_PULSE, contactLevelEnabled = true))
-            contactRepo.upsert(ContactFilter("com.example", "Work", "", isWatched = true, VibrationMode.DOUBLE_TAP))
+            contactRepo.upsert(ContactFilter("com.example", "Work", "", isWatched = true, VibrationMode.LONG_PULSE))
             contactRepo.upsert(ContactFilter("com.example", "Work", "Alice", isWatched = true, VibrationMode.ESCALATING))
             deviceRepo.upsert(alertDevice)
 
