@@ -36,9 +36,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ch.rhosys.lyra.data.AppIconCache
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -295,6 +297,7 @@ private fun VibrationModePicker(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode.displayName) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -303,7 +306,7 @@ private fun VibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
-                        previewVibration(context, m)
+                        scope.launch { previewVibration(context, m) }
                         onModeSelected(m)
                     },
                 )
@@ -319,6 +322,7 @@ private fun NullableVibrationModePicker(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     Box {
         TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: "App default") }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -334,7 +338,7 @@ private fun NullableVibrationModePicker(
                     text = { Text(m.displayName) },
                     onClick = {
                         expanded = false
-                        previewVibration(context, m)
+                        scope.launch { previewVibration(context, m) }
                         onModeSelected(m)
                     },
                 )
