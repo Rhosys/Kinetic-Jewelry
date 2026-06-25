@@ -14,8 +14,8 @@ enum class VibrationMode(
     val displayName: String,
     val blocks: List<VibrationBlock>,
 ) {
-    SHORT_PULSE(1, "Short Pulse", listOf(SHORT_BUZZ)),
-    LONG_PULSE(2, "Long Pulse", listOf(LONG_BUZZ)),
+    SHORT_PULSE(1, "Short Pulse", listOf(SHORT_BUZZ, SHORT_PAUSE, SHORT_BUZZ, SHORT_PAUSE)),
+    LONG_PULSE(2, "Long Pulse", listOf(LONG_BUZZ, MEDIUM_PAUSE, LONG_BUZZ, MEDIUM_PAUSE)),
     DOUBLE_TAP(3, "Double Tap", listOf(CLICK, SHORT_PAUSE, CLICK)),
     HEARTBEAT(
         4, "Heartbeat",

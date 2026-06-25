@@ -70,7 +70,7 @@ class CompositeBluetoothController
             timeoutMs: Long,
         ): Result<Unit> =
             if (address.startsWith(WEAR_ADDRESS_PREFIX)) {
-                Result.failure(UnsupportedOperationException("Raw vibration control isn't supported on Wear OS devices"))
+                wearController.sendRawVibration(address.removePrefix(WEAR_ADDRESS_PREFIX), blocks, repeat, timeoutMs)
             } else {
                 bleController.sendRawVibration(address, blocks, repeat, timeoutMs)
             }
