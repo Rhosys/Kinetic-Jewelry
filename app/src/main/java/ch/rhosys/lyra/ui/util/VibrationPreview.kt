@@ -5,10 +5,12 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
 import kotlinx.coroutines.delay
 
+private const val TAG = "VibrationPreview"
 private const val TEST_REPEAT_DELAY_MS = 1000L
 
 private fun vibratorOf(context: Context): Vibrator =
@@ -20,21 +22,22 @@ private fun vibratorOf(context: Context): Vibrator =
     }
 
 private fun toWaveform(blocks: List<VibrationBlock>): VibrationEffect {
-    // A single block is just a continuous buzz; createOneShot is the API meant
-    // for that and is honored consistently, whereas a 2-element createWaveform
-    // array ([0, duration]) is silently dropped by some OEM vibrator HALs.
-    if (blocks.size == 1) {
-        return VibrationEffect.createOneShot(blocks[0].durationMs.toLong(), VibrationEffect.DEFAULT_AMPLITUDE)
-    }
+    // All patterns use the same createWaveform path for consistency.
     // createWaveform(timings, repeat) alternates off/on starting with off.
     // Prepend 0ms so the pattern starts vibrating immediately, then each
-    // block duration follows. All VibrationMode patterns already alternate
-    // buzz→pause→buzz so the off/on assignment is always correct. Single-block
-    // modes (SHORT_PULSE, LONG_PULSE) go through this same call rather than
-    // createOneShot — they used to be special-cased onto createOneShot, but
-    // that carve-out was never confirmed against real hardware and is the
-    // likely source of the "doesn't vibrate" reports for those two modes.
-    val timings = longArrayOf(0L) + blocks.map { it.durationMs.toLong() }.toLongArray()
+    // block duration follows. VibrationMode patterns alternate buzz→pause→buzz
+    // so the off/on assignment is always correct.
+    //
+    // Single-block modes (SHORT_PULSE, LONG_PULSE) append a 1ms off-segment
+    // so the waveform has at least 2 entries — some OEM vibrator HALs silently
+    // drop createOneShot or single-entry waveforms.
+    val rawTimings = blocks.map { it.durationMs.toLong() }.toLongArray()
+    val timings = if (rawTimings.size == 1) {
+        longArrayOf(0L, rawTimings[0], 1L)
+    } else {
+        longArrayOf(0L) + rawTimings
+    }
+    Log.d(TAG, "toWaveform: blocks=${blocks.map { "${it.name}(${it.durationMs}ms)" }}, timings=${timings.toList()}")
     return VibrationEffect.createWaveform(timings, -1)
 }
 
@@ -51,8 +54,12 @@ fun previewVibration(
 ) {
     if (blocks.isEmpty()) return
     val vibrator = vibratorOf(context)
-    if (!vibrator.hasVibrator()) return
+    if (!vibrator.hasVibrator()) {
+        Log.w(TAG, "previewVibration: device has no vibrator")
+        return
+    }
     val sequence = List(repeat.coerceAtLeast(1)) { blocks }.flatten()
+    Log.d(TAG, "previewVibration: hasAmplitudeControl=${vibrator.hasAmplitudeControl()}, blocks=${sequence.size}, repeat=$repeat")
     vibrator.vibrate(toWaveform(sequence))
 }
 
