@@ -67,8 +67,8 @@ class DebugVibrationViewModel
             val blocks = _sequence.value
             val repeatCount = _repeat.value
             viewModelScope.launch {
-                if (blocks.isEmpty()) {
-                    _snackbar.emit("Sequence is empty — add at least one block")
+                if (blocks.size < 3) {
+                    _snackbar.emit("Sequence must have at least 3 blocks")
                     return@launch
                 }
                 previewVibration(context, blocks, repeatCount)
