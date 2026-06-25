@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -53,7 +56,14 @@ fun DebugVibrationScreen(vm: DebugVibrationViewModel = hiltViewModel()) {
         vm.snackbar.collectLatest { msg -> snackbarHostState.showSnackbar(msg) }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { innerPadding ->
+    Scaffold(
+        snackbarHost = {
+            // Anchor the snackbar to the top so it never covers the Vibrate button at the bottom.
+            Box(modifier = Modifier.fillMaxSize()) {
+                SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.TopCenter))
+            }
+        },
+    ) { innerPadding ->
         Column(
             modifier =
                 Modifier
@@ -74,13 +84,22 @@ fun DebugVibrationScreen(vm: DebugVibrationViewModel = hiltViewModel()) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             Text("Add a block to the sequence", style = MaterialTheme.typography.titleMedium)
+            // Buzz (motor-on) blocks are tinted primary; pause (motor-off) blocks tertiary,
+            // so the two kinds are distinguishable at a glance while building a sequence.
             VibrationBlock.entries.chunked(2).forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     row.forEach { block ->
-                        OutlinedButton(onClick = { vm.addBlock(block) }, modifier = Modifier.weight(1f)) {
+                        val blockColor =
+                            if (block.motorOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                        OutlinedButton(
+                            onClick = { vm.addBlock(block) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = blockColor),
+                            border = BorderStroke(1.dp, blockColor),
+                        ) {
                             Text("${block.name} (${block.durationMs}ms)", style = MaterialTheme.typography.labelSmall)
                         }
                     }
