@@ -26,11 +26,11 @@ class CompositeBluetoothController
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
         override val pairedDevices: StateFlow<List<BluetoothDeviceInfo>> =
-            combine(bleController.pairedDevices, wearController.wearNodes) { ble, wear -> ble + wear }
+            combine(bleController.pairedDevices, wearController.wearNodes, ::excludeWearOsDuplicates)
                 .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
         override val connectedDevices: StateFlow<List<BluetoothDeviceInfo>> =
-            combine(bleController.connectedDevices, wearController.wearNodes) { ble, wear -> ble + wear }
+            combine(bleController.connectedDevices, wearController.wearNodes, ::excludeWearOsDuplicates)
                 .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
         override val scanResults: StateFlow<List<BluetoothDeviceInfo>> =
@@ -65,3 +65,18 @@ class CompositeBluetoothController
 
         override fun releaseResources() = bleController.releaseResources()
     }
+
+/**
+ * The Wear OS API and the classic Bluetooth bonded-device list both surface the same physical
+ * watch, but with unrelated identifiers (a Wearable node id vs. a Bluetooth MAC address) — there's
+ * no shared key to match them on. Display name is the only field both sides agree on, so a BLE
+ * entry is treated as the watch's raw radio link and dropped whenever a Wear OS node already
+ * reports that name.
+ */
+private fun excludeWearOsDuplicates(
+    ble: List<BluetoothDeviceInfo>,
+    wear: List<BluetoothDeviceInfo>,
+): List<BluetoothDeviceInfo> {
+    val wearNames = wear.map { it.name.lowercase() }.toSet()
+    return ble.filter { it.name.lowercase() !in wearNames } + wear
+}
