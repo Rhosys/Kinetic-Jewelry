@@ -43,14 +43,49 @@ import ch.rhosys.lyra.BuildConfig
 import ch.rhosys.lyra.data.LogLevel
 import ch.rhosys.lyra.domain.AppSettingsProvider
 import ch.rhosys.lyra.domain.model.MultiDeviceMode
+import ch.rhosys.lyra.ui.common.ErrorDialog
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/**
+ * Entry point for the Settings tab. The Compose compiler disallows try/catch around composable
+ * function invocations entirely (not just in catch blocks), so [hiltViewModel] and
+ * [SettingsScreenContent] are called directly here. Load-time failures inside non-composable code
+ * (DataStore reads, lifecycle effects) are instead surfaced via [SettingsViewModel.loadError] and
+ * the [onError] callback below, both backed by plain try/catch in code that isn't itself a
+ * composable call.
+ */
 @Composable
-fun SettingsScreen(
-    vm: SettingsViewModel = hiltViewModel(),
-    onDebugVibrationsClick: () -> Unit = {},
+fun SettingsScreen(onDebugVibrationsClick: () -> Unit = {}) {
+    var localError by remember { mutableStateOf<Throwable?>(null) }
+
+    val vm: SettingsViewModel = hiltViewModel()
+    val vmLoadError by vm.loadError.collectAsState()
+
+    SettingsScreenContent(
+        vm = vm,
+        onDebugVibrationsClick = onDebugVibrationsClick,
+        onError = { e -> localError = e },
+    )
+
+    val displayError = localError ?: vmLoadError
+    if (displayError != null) {
+        ErrorDialog(
+            error = displayError,
+            onDismiss = {
+                localError = null
+                vm.clearLoadError()
+            },
+        )
+    }
+}
+
+@Composable
+private fun SettingsScreenContent(
+    vm: SettingsViewModel,
+    onDebugVibrationsClick: () -> Unit,
+    onError: (Throwable) -> Unit,
 ) {
     val listenerEnabled by vm.listenerEnabled.collectAsState()
     val listenerConnected by vm.listenerConnected.collectAsState()
@@ -62,16 +97,25 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     LifecycleResumeEffect(Unit) {
-        vm.refreshStatus()
+        try {
+            vm.refreshStatus()
+        } catch (e: Throwable) {
+            onError(e)
+        }
         onPauseOrDispose {}
     }
 
     val buildDate =
         remember {
-            DateTimeFormatter
-                .ofPattern("yyyy-MM-dd HH:mm")
-                .withZone(ZoneId.systemDefault())
-                .format(Instant.parse(BuildConfig.BUILD_TIME))
+            try {
+                DateTimeFormatter
+                    .ofPattern("yyyy-MM-dd HH:mm")
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.parse(BuildConfig.BUILD_TIME))
+            } catch (e: Throwable) {
+                onError(e)
+                "unknown"
+            }
         }
 
     val scrollState = rememberScrollState()
@@ -161,18 +205,22 @@ fun SettingsScreen(
         var btPermGranted by remember { mutableStateOf(true) }
 
         LifecycleResumeEffect(Unit) {
-            notifPermGranted =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                } else {
-                    true
-                }
-            btPermGranted =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-                } else {
-                    true
-                }
+            try {
+                notifPermGranted =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                    } else {
+                        true
+                    }
+                btPermGranted =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                    } else {
+                        true
+                    }
+            } catch (e: Throwable) {
+                onError(e)
+            }
             onPauseOrDispose {}
         }
 

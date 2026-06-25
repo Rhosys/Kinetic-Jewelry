@@ -54,7 +54,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.flow.collectLatest
 
 private val BluetoothDeviceInfo.deviceSubtitle: String
-    get() = if (deviceType == DeviceType.WEAR_OS) "Wear OS" else address
+    get() = if (deviceType == DeviceType.WEAR_OS) "Wear OS" else sanitizeMacAddress(address)
 
 private const val MAX_SCAN_NAME_LENGTH = 30
 
@@ -69,6 +69,14 @@ private fun sanitizeScanName(rawName: String): String =
     rawName
         .filter { it.isLetterOrDigit() || it == ' ' || it == '-' }
         .take(MAX_SCAN_NAME_LENGTH)
+
+/** Normalizes a BLE address to the standard uppercase, colon-separated octet form (AA:BB:CC:DD:EE:FF). */
+private fun sanitizeMacAddress(rawAddress: String): String =
+    rawAddress
+        .filter { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
+        .uppercase()
+        .chunked(2)
+        .joinToString(":")
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -264,15 +272,24 @@ private fun ScanResultsList(
                 modifier = Modifier.padding(8.dp).verticalScrollbar(listState),
             ) {
                 items(devices, key = { "scan_${it.address}" }) { device ->
-                    Text(
-                        sanitizeScanName(device.name),
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
+                    ScanResultRow(device)
                     HorizontalDivider()
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScanResultRow(device: BluetoothDeviceInfo) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+    ) {
+        Text(sanitizeScanName(device.name), style = MaterialTheme.typography.bodyLarge)
+        Text(sanitizeMacAddress(device.address), style = MaterialTheme.typography.labelSmall)
     }
 }
 
