@@ -60,14 +60,18 @@ class WearOsController
             runCatching {
                 withTimeout(timeoutMs) {
                     val payload = byteArrayOf(repeat.coerceAtLeast(1).toByte()) + blocks.map { it.id }.toByteArray()
-                    Wearable
+                    logger.info("Wear sendMessage: nodeId=$nodeId, path=$VIBRATE_PATH, payload=${payload.size} bytes, timeout=${timeoutMs}ms")
+                    val taskResult = Wearable
                         .getMessageClient(context)
                         .sendMessage(nodeId, VIBRATE_PATH, payload)
                         .await()
+                    logger.info("Wear sendMessage completed: requestId=$taskResult")
                     Unit
                 }
             }.also { result ->
                 result.onSuccess { logger.info("Wear vibration sent to $nodeId ($blocks × $repeat)") }
-                result.onFailure { logger.error("Wear vibration failed for $nodeId", it) }
+                result.onFailure { e ->
+                    logger.error("Wear vibration failed for $nodeId: ${e.javaClass.simpleName}: ${e.message}")
+                }
             }
     }
