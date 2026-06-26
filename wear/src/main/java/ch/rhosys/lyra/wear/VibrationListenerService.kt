@@ -1,15 +1,20 @@
 package ch.rhosys.lyra.wear
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 
 private const val TAG = "VibrationListener"
 private const val VIBRATE_PATH = "/kinetic/vibrate_raw"
+private const val NOTIFICATION_CHANNEL_ID = "vibration_confirmation"
+private const val NOTIFICATION_ID = 1001
 
 /** Gap between repeat iterations — a real delay between separate vibrate() calls, never baked into a waveform. */
 private const val REPEAT_GAP_MS = 200L
@@ -54,12 +59,14 @@ class VibrationListenerService : WearableListenerService() {
     private fun playRawSequence(data: ByteArray) {
         if (data.isEmpty()) {
             Log.w(TAG, "playRawSequence: empty payload")
+            showNotification("Vibration failed: empty payload")
             return
         }
         val repeatCount = data[0].toInt().coerceAtLeast(1)
         val blocks = data.drop(1).mapNotNull { BLOCK_DURATIONS[it] }
         if (blocks.isEmpty()) {
             Log.w(TAG, "playRawSequence: no recognized block ids in payload")
+            showNotification("Vibration failed: no recognized blocks")
             return
         }
 
@@ -70,9 +77,42 @@ class VibrationListenerService : WearableListenerService() {
         Log.d(TAG, "playRawSequence: ${blocks.size} block(s), $repeatCount×, $totalDurationMs ms/cycle")
 
         val vibrator = vibrator
-        for (i in 0 until repeatCount) {
-            vibrator.vibrate(waveform)
-            if (i < repeatCount - 1) Thread.sleep(totalDurationMs + REPEAT_GAP_MS)
+        try {
+            for (i in 0 until repeatCount) {
+                vibrator.vibrate(waveform)
+                if (i < repeatCount - 1) Thread.sleep(totalDurationMs + REPEAT_GAP_MS)
+            }
+            showNotification("✓ Vibration sent (${blocks.size} blocks × $repeatCount)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Vibration failed", e)
+            showNotification("Vibration error: ${e.message ?: e.javaClass.simpleName}")
         }
+    }
+
+    private fun showNotification(message: String) {
+        val nm = getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    "Vibration Confirmations",
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = "Confirms vibration commands received from phone"
+                },
+            )
+        }
+
+        val notification =
+            NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Lyra")
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .build()
+
+        nm.notify(NOTIFICATION_ID, notification)
     }
 }

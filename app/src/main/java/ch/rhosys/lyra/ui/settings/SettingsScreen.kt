@@ -3,6 +3,7 @@ package ch.rhosys.lyra.ui.settings
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -87,6 +88,7 @@ private fun SettingsScreenContent(
     onDebugVibrationsClick: () -> Unit,
     onError: (Throwable) -> Unit,
 ) {
+    Log.d("SettingsScreen", "SettingsScreen composing")
     val listenerEnabled by vm.listenerEnabled.collectAsState()
     val listenerConnected by vm.listenerConnected.collectAsState()
     val batteryOptimizationIgnored by vm.batteryOptimizationIgnored.collectAsState()
@@ -113,6 +115,7 @@ private fun SettingsScreenContent(
                     .withZone(ZoneId.systemDefault())
                     .format(Instant.parse(BuildConfig.BUILD_TIME))
             } catch (e: Throwable) {
+                Log.e("SettingsScreen", "Failed to parse BUILD_TIME: '${BuildConfig.BUILD_TIME}'", e)
                 onError(e)
                 "unknown"
             }
