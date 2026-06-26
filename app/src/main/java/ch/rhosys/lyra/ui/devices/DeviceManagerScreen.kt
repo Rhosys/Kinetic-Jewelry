@@ -30,7 +30,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -306,7 +305,7 @@ private fun ConnectionStatusChip(state: ConnectionState) {
         icon,
         contentDescription = label,
         tint = tint,
-        modifier = Modifier.size(SuggestionChipDefaults.IconSize).padding(horizontal = 4.dp),
+        modifier = Modifier.size(32.dp).padding(horizontal = 4.dp),
     )
 }
 
