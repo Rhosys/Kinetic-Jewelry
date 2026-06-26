@@ -132,6 +132,7 @@ class ProcessNotificationUseCase
                     succeeded = true
                     break
                 } else {
+                    logger.error("Device ${device.name} (${device.address}) failed: ${result.exceptionOrNull()?.message}")
                     bluetoothDeviceRepository.recordFailure(device.address)
                 }
             }
@@ -156,6 +157,7 @@ class ProcessNotificationUseCase
                                     firstAck.complete(Unit)
                                     bluetoothDeviceRepository.recordSuccess(device.address)
                                 } else {
+                                    logger.error("Device ${device.name} (${device.address}) failed: ${result.exceptionOrNull()?.message}")
                                     bluetoothDeviceRepository.recordFailure(device.address)
                                 }
                             }
