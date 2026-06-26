@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val TAG = "SettingsViewModel"
+
 @HiltViewModel
 class SettingsViewModel
     @Inject
@@ -35,6 +38,10 @@ class SettingsViewModel
         private val logger: AppLogger,
         private val appSettings: AppSettings,
     ) : ViewModel() {
+        init {
+            Log.d(TAG, "SettingsViewModel created")
+        }
+
         // Anything that throws while the Settings tab is loading lands here instead of
         // crashing the app — the screen observes this and shows a copyable error dialog.
         private val _loadError = MutableStateFlow<Throwable?>(null)
@@ -45,12 +52,10 @@ class SettingsViewModel
 
         val listenerConnected: StateFlow<Boolean> =
             eventBus.listenerConnected
-                .catch { e -> _loadError.value = e; emit(false) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
         val logEntries: StateFlow<List<LogEntry>> =
             logger.entries
-                .catch { e -> _loadError.value = e; emit(emptyList()) }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         private val _batteryOptimizationIgnored = MutableStateFlow(safeCheckBatteryOptimization())
@@ -68,8 +73,8 @@ class SettingsViewModel
 
         val autoReEnable24h: StateFlow<Boolean> =
             appSettings.autoReEnable24h
-                .catch { e -> _loadError.value = e; emit(false) }
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+                .catch { e -> _loadError.value = e; emit(true) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
         fun refreshStatus() {
             _listenerEnabled.value = safeCheckListenerEnabled()
@@ -84,6 +89,7 @@ class SettingsViewModel
             try {
                 checkListenerEnabled()
             } catch (e: Throwable) {
+                Log.e(TAG, "safeCheckListenerEnabled failed", e)
                 _loadError.value = e
                 false
             }
@@ -92,6 +98,7 @@ class SettingsViewModel
             try {
                 checkBatteryOptimization()
             } catch (e: Throwable) {
+                Log.e(TAG, "safeCheckBatteryOptimization failed", e)
                 _loadError.value = e
                 false
             }

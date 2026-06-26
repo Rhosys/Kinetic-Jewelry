@@ -45,7 +45,7 @@ class AppSettings
             }
 
         override val autoReEnable24h: Flow<Boolean> =
-            safeData.map { prefs -> prefs[KEY_AUTO_RE_ENABLE_24H] ?: false }
+            safeData.map { prefs -> prefs[KEY_AUTO_RE_ENABLE_24H] ?: true }
 
         suspend fun setConnectionTimeoutMs(ms: Long) =
             dataStore.edit { prefs ->
