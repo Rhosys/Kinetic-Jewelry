@@ -2,12 +2,15 @@ package ch.rhosys.lyra.ui.apps
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.rhosys.lyra.data.AppLogger
+import ch.rhosys.lyra.domain.BluetoothController
 import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.NotificationHistoryEntry
 import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.domain.repository.AppFilterRepository
+import ch.rhosys.lyra.domain.repository.BluetoothDeviceRepository
 import ch.rhosys.lyra.domain.repository.ContactFilterRepository
 import ch.rhosys.lyra.domain.repository.NotificationHistoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +32,9 @@ class AppFilterViewModel
         private val contactRepo: ContactFilterRepository,
         private val historyRepo: NotificationHistoryRepository,
         private val phoneVibrator: PhoneVibrator,
+        private val bluetoothController: BluetoothController,
+        private val deviceRepo: BluetoothDeviceRepository,
+        private val logger: AppLogger,
     ) : ViewModel() {
         val apps: StateFlow<List<AppFilter>> =
             appRepo
@@ -163,9 +170,18 @@ class AppFilterViewModel
             }
         }
 
-        /** Plays [mode] on the phone's vibrator so the user can feel it while picking a mode. */
+        /** Plays [mode] on the phone vibrator and all alert-enabled devices so the user can feel it. */
         fun demoVibration(mode: VibrationMode) {
-            viewModelScope.launch { phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, mode.blocks) }
+            viewModelScope.launch {
+                phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, mode.blocks)
+                val devices = deviceRepo.observeAlertEnabled().first()
+                for (device in devices) {
+                    val result = bluetoothController.sendVibration(device.address, mode.blocks)
+                    if (result.isFailure) {
+                        logger.error("Demo vibration failed for ${device.name} (${device.address}): ${result.exceptionOrNull()?.message}")
+                    }
+                }
+            }
         }
 
         private suspend fun refreshContacts(packageName: String) {
