@@ -34,9 +34,16 @@ class ProcessNotificationUseCase
             groupName: String,
             contactName: String?,
         ) {
-            if (contactName.isNullOrBlank()) return
+            if (contactName.isNullOrBlank()) {
+                logger.info("Notification skipped: contactName is blank for $packageName")
+                return
+            }
 
-            val appFilter = appFilterRepository.getByPackageName(packageName) ?: return
+            val appFilter = appFilterRepository.getByPackageName(packageName)
+            if (appFilter == null) {
+                logger.info("Notification skipped: $packageName not in app filter list")
+                return
+            }
             if (!appFilter.isWatched) {
                 logger.info("Notification ignored: $packageName is not watched")
                 return
@@ -84,12 +91,17 @@ class ProcessNotificationUseCase
 
             // The phone is always available and isn't part of the alert-enabled device list —
             // it vibrates unconditionally, independent of whatever BLE/Wear devices are configured.
-            phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, effectiveMode.blocks)
+            val phoneResult = phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, effectiveMode.blocks)
+            if (phoneResult.isFailure) {
+                logger.error("Phone vibration failed: ${phoneResult.exceptionOrNull()?.message}")
+            }
 
             val allAlertDevices = bluetoothDeviceRepository.observeAlertEnabled().first()
             val userTimeoutMs = appSettings.connectionTimeoutMs.first()
             val multiDeviceMode = appSettings.multiDeviceMode.first()
             val autoReEnable = appSettings.autoReEnable24h.first()
+
+            logger.info("Alert-enabled devices: ${allAlertDevices.size} (addresses: ${allAlertDevices.map { "${it.name}/${it.address}" }})")
 
             // Lazy auto-re-enable: bring back devices whose disable window has expired
             val now = System.currentTimeMillis()
@@ -98,10 +110,14 @@ class ProcessNotificationUseCase
                     when {
                         !device.isCurrentlyDisabled -> device
                         autoReEnable && now >= (device.disabledUntil ?: 0) + AppSettingsProvider.AUTO_RE_ENABLE_DURATION_MS -> {
+                            logger.info("Auto-re-enabling ${device.name} (${device.address}) — disable window expired")
                             bluetoothDeviceRepository.setDisabledUntil(device.address, null)
                             device.copy(disabledUntil = null)
                         }
-                        else -> null
+                        else -> {
+                            logger.info("Skipping disabled device ${device.name} (${device.address})")
+                            null
+                        }
                     }
                 }
 
@@ -110,7 +126,7 @@ class ProcessNotificationUseCase
                 return
             }
 
-            logger.info("Dispatching to ${activeDevices.size} device(s) via $multiDeviceMode")
+            logger.info("Dispatching to ${activeDevices.size} device(s) via $multiDeviceMode (timeout: ${userTimeoutMs}ms)")
             when (multiDeviceMode) {
                 MultiDeviceMode.FIRST_WINS -> dispatchFirstWins(activeDevices, effectiveMode, userTimeoutMs)
                 MultiDeviceMode.ALL_DEVICES -> dispatchAllDevices(activeDevices, effectiveMode, userTimeoutMs)
@@ -172,7 +188,7 @@ class ProcessNotificationUseCase
                     firstAck.await()
                     delay(1_000L)
                 } catch (_: Exception) {
-                    // All devices failed — nothing to cancel
+                    logger.warn("ALL_DEVICES: all ${devices.size} device(s) failed — no ACK received")
                 }
                 jobs.forEach { it.cancel() }
             }

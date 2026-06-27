@@ -134,11 +134,13 @@ class BluetoothControllerImpl
             repeat: Int,
             timeoutMs: Long,
         ): Result<Unit> {
-            logger.info("Sending vibration ($blocks × $repeat) to $address")
+            logger.info("BLE sendVibration: address=$address, blocks=$blocks, repeat=$repeat, timeout=${timeoutMs}ms")
             return writeBlocks(address, blocks, repeat, timeoutMs)
                 .also { result ->
-                    result.onSuccess { logger.info("Vibration sent to $address") }
-                    result.onFailure { logger.error("Vibration failed for $address", it) }
+                    result.onSuccess { logger.info("BLE vibration sent to $address") }
+                    result.onFailure { e ->
+                        logger.error("BLE vibration failed for $address [${e.javaClass.simpleName}]", e)
+                    }
                 }
         }
 

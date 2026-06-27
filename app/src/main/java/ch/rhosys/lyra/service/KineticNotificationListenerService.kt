@@ -105,7 +105,7 @@ class KineticNotificationListenerService : NotificationListenerService() {
                     contactName = contactName,
                 )
             } catch (e: Exception) {
-                logger.error("ProcessNotification crashed for ${sbn.packageName}/$contactName: ${e.message}")
+                logger.error("ProcessNotification crashed for ${sbn.packageName}/$contactName", e)
             }
         }
     }
