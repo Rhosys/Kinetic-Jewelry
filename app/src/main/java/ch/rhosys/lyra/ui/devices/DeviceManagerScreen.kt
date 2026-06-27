@@ -118,11 +118,18 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
             val sectionMaxHeight = maxHeight * MAX_SECTION_HEIGHT_FRACTION
 
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    "Registered Devices",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        "Registered Devices",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
                 if (alertDevices.isEmpty()) {
                     Text(
                         "No registered devices yet.",
@@ -146,11 +153,22 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                     }
                 }
 
-                Text(
-                    "Known Devices",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        "Known Devices",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
                 if (pairedDevices.isEmpty()) {
                     Text(
                         "No paired devices found. Pair a device via Bluetooth settings.",
