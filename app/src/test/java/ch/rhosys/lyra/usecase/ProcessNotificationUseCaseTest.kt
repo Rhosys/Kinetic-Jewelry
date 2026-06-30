@@ -98,10 +98,10 @@ class ProcessNotificationUseCaseTest {
             assertNull(contactRepo.get("com.example", "", "Alice"))
         }
 
-    // ── Scenario 4: contact-level enabled, unknown sender falls back to app mode ──────────────────────
+    // ── Scenario 4: contact-level enabled, unknown sender is whitelisted out ─────────────────────────
 
     @Test
-    fun `unknown sender is not auto-created and app mode fires`() =
+    fun `unknown sender is not auto-created and does not vibrate`() =
         runTest {
             appRepo.upsert(watchedApp(mode = VibrationMode.HEARTBEAT, contactLevelEnabled = true))
             deviceRepo.upsert(alertDevice)
@@ -109,8 +109,31 @@ class ProcessNotificationUseCaseTest {
             useCase.execute("com.example", "", "Alice")
 
             assertNull("Unknown sender must not be auto-added", contactRepo.get("com.example", "", "Alice"))
+            assertTrue("Contact-level filtering is a whitelist — unknown senders must not vibrate", btController.sentCommands.isEmpty())
+            assertTrue(phoneVibrator.sentCommands.isEmpty())
+        }
+
+    // ── Scenario 4b: removing a watched user stops their vibrations ──────────────────────────────────
+
+    @Test
+    fun `removed user no longer vibrates`() =
+        runTest {
+            appRepo.upsert(watchedApp(mode = VibrationMode.HEARTBEAT, contactLevelEnabled = true))
+            contactRepo.upsert(ContactFilter("com.example", "", "Alice", isWatched = true, null))
+            deviceRepo.upsert(alertDevice)
+
+            // Alice is watched → vibrates
+            useCase.execute("com.example", "", "Alice")
             assertEquals(1, btController.sentCommands.size)
-            assertEquals(VibrationMode.HEARTBEAT.blocks, btController.sentCommands[0].blocks)
+
+            // User removes Alice
+            contactRepo.delete("com.example", "", "Alice")
+            btController.sentCommands.clear()
+            phoneVibrator.sentCommands.clear()
+
+            useCase.execute("com.example", "", "Alice")
+            assertTrue("Removed user must not vibrate", btController.sentCommands.isEmpty())
+            assertTrue(phoneVibrator.sentCommands.isEmpty())
         }
 
     // ── Scenario 5: explicit mode override on contact ────────────────────────
