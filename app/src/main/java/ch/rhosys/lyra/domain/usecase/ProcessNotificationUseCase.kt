@@ -68,7 +68,11 @@ class ProcessNotificationUseCase
                         modeOverride = groupRule.vibrationMode
                     }
                     else -> {
-                        effectiveIsWatched = appFilter.isWatched
+                        // Contact-level filtering is a whitelist ("All Users" is OFF): only senders
+                        // and groups the user explicitly curated may vibrate. A sender with no rule —
+                        // because they were never added, or were removed — must NOT fall back to the
+                        // app default, otherwise removing a user would never stop their vibrations.
+                        effectiveIsWatched = false
                         modeOverride = null
                     }
                 }
