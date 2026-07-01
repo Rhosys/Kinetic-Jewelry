@@ -34,7 +34,10 @@ Kinetic-Jewelry/
 │   │
 │   ├── hardware/
 │   │   ├── wiring.md             circuit schematic (ASCII + Mermaid diagrams)
-│   │   └── bom.md                complete parts list
+│   │   ├── bom.md                complete parts list (prototype/breadboard)
+│   │   ├── bom-production.md     SMD/miniaturized parts list w/ pogo-pad charging contacts
+│   │   ├── bom-charging-dock.md  separate USB-C charging base, supports 2 devices at once
+│   │   └── charging-system-diagram.md   Mermaid diagram: dock + 2 devices, full power path
 │   │
 │   ├── TESTING.md                three-tier test strategy (host / board / circuit)
 │   └── TEST-SUITES-SPEC.md       spec for Suite A (BLE) and Suite B (round-trip)
