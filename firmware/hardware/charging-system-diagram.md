@@ -1,15 +1,15 @@
 # KineticJewel – Charging System Diagram
 
-Full power/charging path across all three BOMs: the dock
-(`bom-charging-dock.md`) and two devices (`bom-production.md`), from the
-USB-C plug down to the motor and status LEDs. Ref designators match the
-tables in those files — each subgraph reuses its own file's refs (e.g. both
-devices have their own `U1`, `J1`, etc.), so treat the subgraph boundary as
-the scope for any ref, not the whole diagram.
+Full power/charging path across all three boards documented in `bom.md`:
+the Charging Dock and two Production Devices, from the USB-C plug down to
+the motor and status LEDs. Ref designators match the tables in `bom.md` —
+each subgraph reuses its own board's refs (e.g. both devices have their own
+`U1`, `J1`, etc.), so treat the subgraph boundary as the scope for any ref,
+not the whole diagram.
 
 ```mermaid
 flowchart TB
-    subgraph DOCK["Charging Dock — bom-charging-dock.md"]
+    subgraph DOCK["Charging Dock — bom.md"]
         direction TB
         USBC["J1<br/>USB-C receptacle"] -->|"VBUS"| FMAIN["F1<br/>PPTC ~2A"]
         USBC -->|"CC1"| RCC1["R1<br/>5.1k"] --> DGND(("GND"))
@@ -26,7 +26,7 @@ flowchart TB
         DRAIL --> LEDDB["LED2<br/>Port B present"] --> DGND
     end
 
-    subgraph DEVA["Device A — bom-production.md"]
+    subgraph DEVA["Device A — bom.md"]
         direction TB
         PADA["J1<br/>Pogo pad"] --> FUSEA["F1<br/>PPTC ~750mA"]
         FUSEA --> CHGA["U2<br/>MCP73831"]
@@ -67,8 +67,8 @@ Notes:
   independent circuits, which is why either device can dock into either
   port, and either port can be empty without affecting the other.
 - Charge current/termination/protection (`U2`/`U3`) live entirely on each
-  device, not the dock — see the "Full charge path" sections in
-  `bom-production.md` and `bom-charging-dock.md` for the prose walkthrough.
+  device, not the dock — see the "Full charge path" sections under
+  Production Device and Charging Dock in `bom.md` for the prose walkthrough.
 - BLE control flow (phone ↔ motor/LED once running on battery) is a
   separate concern from charging and is already diagrammed in
-  `wiring.md` (applies unchanged to the production BOM's `U1`).
+  `wiring.md` (applies unchanged to the Production Device's `U1`).
