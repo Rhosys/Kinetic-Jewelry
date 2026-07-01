@@ -5,7 +5,9 @@ status LED), re-specced with SMD parts for a small wearable footprint, plus a
 rechargeable Li-Po battery charged via 2-pin pogo-pad contacts. See `bom.md`
 for the prototype/breadboard version this replaces, and
 `bom-charging-dock.md` for the separate USB-C charging base that mates with
-these contacts (and can charge two devices at once).
+these contacts (and can charge two devices at once). A full-system Mermaid
+diagram tying this file and the dock together is in
+`charging-system-diagram.md`.
 
 ## Core (MCU, motor driver, LED)
 
