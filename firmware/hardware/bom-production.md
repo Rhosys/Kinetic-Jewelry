@@ -7,7 +7,7 @@ for the prototype/breadboard version this replaces, and
 `bom-charging-dock.md` for the separate USB-C charging base that mates with
 these contacts (and can charge two devices at once). A full-system Mermaid
 diagram tying this file and the dock together is in
-`charging-system-diagram.md`.
+`charging-system-diagram.md`. All three boards in one table: `bom-unified.md`.
 
 ## Core (MCU, motor driver, LED)
 
