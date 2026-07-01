@@ -1,8 +1,10 @@
 # Bill of Materials – KineticJewel
 
 This is the prototype/breadboard BOM. For a size-optimized production
-version with SMD parts and a rechargeable USB-C Li-Po charging front end,
-see `bom-production.md`.
+version with SMD parts and a rechargeable Li-Po battery charged via
+pogo-pad contacts, see `bom-production.md`. The USB-C charging base that
+mates with those contacts (and can charge two devices at once) is a
+separate BOM: `bom-charging-dock.md`.
 
 ## All components – confirmed on hand
 
