@@ -1,5 +1,9 @@
 # Bill of Materials – KineticJewel
 
+This is the prototype/breadboard BOM. For a size-optimized production
+version with SMD parts and a rechargeable USB-C Li-Po charging front end,
+see `bom-production.md`.
+
 ## All components – confirmed on hand
 
 | Ref  | Part                  | Value / Spec                    | Qty | Notes                                          |
