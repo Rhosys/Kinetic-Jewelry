@@ -7,7 +7,7 @@ management itself — each device's own MCP73831 + DW01A/FS8205A circuit (see
 The dock's only job is to accept power from either USB-A→C or USB-C→C
 cables and fan it out to two contact ports. See `charging-system-diagram.md`
 for a Mermaid diagram of this file plus two devices from `bom-production.md`
-wired end to end.
+wired end to end, or `bom-unified.md` for all three boards in one table.
 
 ## USB-C power input
 
