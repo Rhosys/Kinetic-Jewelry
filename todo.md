@@ -34,7 +34,8 @@ Kinetic-Jewelry/
 │   │
 │   ├── hardware/
 │   │   ├── wiring.md             circuit schematic (ASCII + Mermaid diagrams)
-│   │   └── bom.md                complete parts list
+│   │   ├── bom.md                single BOM: Prototype + Production Device + Charging Dock (one section each)
+│   │   └── charging-system-diagram.md   Mermaid diagram: dock + 2 devices, full power path
 │   │
 │   ├── TESTING.md                three-tier test strategy (host / board / circuit)
 │   └── TEST-SUITES-SPEC.md       spec for Suite A (BLE) and Suite B (round-trip)
