@@ -3,7 +3,6 @@ package ch.rhosys.lyra.ui.devices
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.rhosys.lyra.domain.BluetoothController
-import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.domain.repository.BluetoothDeviceRepository
@@ -25,7 +24,6 @@ class DeviceManagerViewModel
     constructor(
         private val deviceRepo: BluetoothDeviceRepository,
         private val bluetoothController: BluetoothController,
-        private val phoneVibrator: PhoneVibrator,
     ) : ViewModel() {
         /** Favorited devices, shown regardless of [BluetoothDeviceInfo.isAlertEnabled] — disabling a
          * favorite keeps it here rather than demoting it back to Recent Devices. */
@@ -96,11 +94,7 @@ class DeviceManagerViewModel
 
         fun testDevice(address: String) {
             viewModelScope.launch {
-                // The phone is always available and isn't part of the alert-enabled device list —
-                // it vibrates unconditionally here too, matching ProcessNotificationUseCase.
-                phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, VibrationMode.SHORT_PULSE.blocks)
-
-                val result = bluetoothController.sendVibration(address, VibrationMode.SHORT_PULSE.blocks)
+                val result = bluetoothController.sendVibration(address, VibrationMode.LONG_PULSE.blocks, repeat = 2)
                 if (result.isFailure) {
                     _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
                 } else {

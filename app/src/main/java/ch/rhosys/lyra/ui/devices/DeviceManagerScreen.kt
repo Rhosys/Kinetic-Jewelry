@@ -34,7 +34,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -125,11 +124,18 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
             val sectionMaxHeight = maxHeight * MAX_SECTION_HEIGHT_FRACTION
 
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    "Favorites",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        "Favorites",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
                 if (favorites.isEmpty()) {
                     Text(
                         "No favorite devices yet.",
@@ -151,11 +157,22 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                     }
                 }
 
-                Text(
-                    "Recent Devices",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        "Recent Devices",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
                 if (recentDevices.isEmpty()) {
                     Text(
                         "No paired devices found. Pair a device via Bluetooth settings.",
@@ -306,7 +323,7 @@ private fun ConnectionStatusChip(state: ConnectionState) {
         icon,
         contentDescription = label,
         tint = tint,
-        modifier = Modifier.size(SuggestionChipDefaults.IconSize).padding(horizontal = 4.dp),
+        modifier = Modifier.size(32.dp).padding(horizontal = 4.dp),
     )
 }
 
