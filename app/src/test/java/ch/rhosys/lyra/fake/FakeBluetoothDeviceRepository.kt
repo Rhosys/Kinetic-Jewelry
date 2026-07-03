@@ -10,7 +10,7 @@ class FakeBluetoothDeviceRepository : BluetoothDeviceRepository {
     private val store = mutableMapOf<String, BluetoothDeviceInfo>()
     private val deviceFlow: MutableStateFlow<Map<String, BluetoothDeviceInfo>> = MutableStateFlow(emptyMap())
 
-    override fun observeAlertEnabled(): Flow<List<BluetoothDeviceInfo>> = deviceFlow.map { map -> map.values.filter { it.isAlertEnabled } }
+    override fun observeFavorites(): Flow<List<BluetoothDeviceInfo>> = deviceFlow.map { map -> map.values.filter { it.isFavorite } }
 
     override suspend fun getAll(): List<BluetoothDeviceInfo> = store.values.toList()
 
@@ -44,6 +44,15 @@ class FakeBluetoothDeviceRepository : BluetoothDeviceRepository {
     ) {
         val device = store[address] ?: return
         store[address] = device.copy(disabledUntil = disabledUntil)
+        deviceFlow.value = store.toMap()
+    }
+
+    override suspend fun setEnabled(
+        address: String,
+        enabled: Boolean,
+    ) {
+        val device = store[address] ?: return
+        store[address] = device.copy(isAlertEnabled = enabled, disabledUntil = if (enabled) null else device.disabledUntil)
         deviceFlow.value = store.toMap()
     }
 }

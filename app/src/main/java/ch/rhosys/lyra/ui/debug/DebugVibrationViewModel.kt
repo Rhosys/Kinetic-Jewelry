@@ -3,9 +3,9 @@ package ch.rhosys.lyra.ui.debug
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.rhosys.lyra.data.AppLogger
-import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.VibrationBlock
 import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.domain.usecase.DeviceVibrationDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,12 +16,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Builds an arbitrary, debug-only block sequence and sends it to the phone's own vibrator. */
+/**
+ * Builds an arbitrary block sequence and sends it through the exact same delivery path as a real
+ * notification (phone + every favorited, enabled device, honoring the multi-device dispatch
+ * setting) — the only difference from production is that the block sequence is picked explicitly
+ * here instead of resolved from an app/contact's configured [VibrationMode].
+ */
 @HiltViewModel
 class DebugVibrationViewModel
     @Inject
     constructor(
-        private val phoneVibrator: PhoneVibrator,
+        private val dispatcher: DeviceVibrationDispatcher,
         private val logger: AppLogger,
     ) : ViewModel() {
         private val _sequence = MutableStateFlow<List<VibrationBlock>>(emptyList())
@@ -63,12 +68,8 @@ class DebugVibrationViewModel
                     _snackbar.emit("Sequence must have at least 3 blocks")
                     return@launch
                 }
-                val result = phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, blocks, repeatCount)
-                if (result.isFailure) {
-                    _snackbar.emit(result.exceptionOrNull()?.message ?: "Unknown error")
-                } else {
-                    _snackbar.emit("Vibrated phone ($repeatCount×)")
-                }
+                dispatcher.dispatch(blocks, repeatCount)
+                _snackbar.emit("Vibrated phone + enabled devices ($repeatCount×)")
             }
         }
     }

@@ -117,7 +117,7 @@ class FakeRepositoryTest {
     fun `FakeBluetoothDeviceRepository starts empty`() = runBlocking {
         val repo = FakeBluetoothDeviceRepository()
         assertEquals(emptyList<BluetoothDeviceInfo>(), repo.getAll())
-        assertEquals(emptyList<BluetoothDeviceInfo>(), repo.observeAlertEnabled().first())
+        assertEquals(emptyList<BluetoothDeviceInfo>(), repo.observeFavorites().first())
     }
 
     @Test
@@ -129,14 +129,36 @@ class FakeRepositoryTest {
     }
 
     @Test
-    fun `FakeBluetoothDeviceRepository observeAlertEnabled filters by isAlertEnabled`() = runBlocking {
+    fun `FakeBluetoothDeviceRepository observeFavorites filters by isFavorite`() = runBlocking {
         val repo = FakeBluetoothDeviceRepository()
-        val alertOn  = BluetoothDeviceInfo("AA:BB:CC:DD:EE:01", "Ring", true, ConnectionState.DISCONNECTED)
-        val alertOff = BluetoothDeviceInfo("AA:BB:CC:DD:EE:02", "Bracelet", false, ConnectionState.DISCONNECTED)
-        repo.upsert(alertOn)
-        repo.upsert(alertOff)
-        val alertDevices = repo.observeAlertEnabled().first()
-        assertEquals(listOf(alertOn), alertDevices)
+        val favorite = BluetoothDeviceInfo("AA:BB:CC:DD:EE:01", "Ring", true, ConnectionState.DISCONNECTED, isFavorite = true)
+        val recent = BluetoothDeviceInfo("AA:BB:CC:DD:EE:02", "Bracelet", false, ConnectionState.DISCONNECTED, isFavorite = false)
+        repo.upsert(favorite)
+        repo.upsert(recent)
+        val favorites = repo.observeFavorites().first()
+        assertEquals(listOf(favorite), favorites)
+    }
+
+    @Test
+    fun `FakeBluetoothDeviceRepository observeFavorites includes disabled favorites`() = runBlocking {
+        val repo = FakeBluetoothDeviceRepository()
+        val disabledFavorite =
+            BluetoothDeviceInfo("AA:BB:CC:DD:EE:01", "Ring", isAlertEnabled = false, ConnectionState.DISCONNECTED, isFavorite = true)
+        repo.upsert(disabledFavorite)
+        val favorites = repo.observeFavorites().first()
+        assertEquals(listOf(disabledFavorite), favorites)
+    }
+
+    @Test
+    fun `FakeBluetoothDeviceRepository setEnabled toggles isAlertEnabled without touching isFavorite`() = runBlocking {
+        val repo = FakeBluetoothDeviceRepository()
+        val device = BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", isAlertEnabled = true, ConnectionState.DISCONNECTED, isFavorite = true)
+        repo.upsert(device)
+
+        repo.setEnabled("AA:BB:CC:DD:EE:FF", false)
+        val disabled = repo.getAll().single()
+        assertEquals(false, disabled.isAlertEnabled)
+        assertTrue(disabled.isFavorite)
     }
 
     @Test

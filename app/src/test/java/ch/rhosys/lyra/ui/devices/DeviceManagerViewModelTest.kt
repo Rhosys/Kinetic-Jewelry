@@ -54,37 +54,79 @@ class DeviceManagerViewModelTest {
     }
 
     @Test
-    fun `enableAlert persists device to repository`() = runTest {
+    fun `addFavorite persists device as favorite and enabled`() = runTest {
         val device = BluetoothDeviceInfo(
             address = "AA:BB:CC:DD:EE:FF",
             name = "TestDevice",
             isAlertEnabled = false,
             connectionState = ConnectionState.DISCONNECTED,
+            isFavorite = false,
         )
-        vm.enableAlert(device)
+        vm.addFavorite(device)
         testDispatcher.scheduler.advanceUntilIdle()
 
         val stored = repo.getAll()
         assertEquals(1, stored.size)
+        assertTrue(stored[0].isFavorite)
         assertTrue(stored[0].isAlertEnabled)
         assertEquals("AA:BB:CC:DD:EE:FF", stored[0].address)
     }
 
     @Test
-    fun `disableAlert removes device from repository`() = runTest {
+    fun `removeFavorite deletes device from repository`() = runTest {
         val device = BluetoothDeviceInfo(
             address = "AA:BB:CC:DD:EE:FF",
             name = "TestDevice",
             isAlertEnabled = true,
             connectionState = ConnectionState.DISCONNECTED,
+            isFavorite = true,
         )
         repo.upsert(device)
 
-        vm.disableAlert("AA:BB:CC:DD:EE:FF")
+        vm.removeFavorite("AA:BB:CC:DD:EE:FF")
         testDispatcher.scheduler.advanceUntilIdle()
 
         val stored = repo.getAll()
         assertEquals(0, stored.size)
+    }
+
+    @Test
+    fun `disabling a favorite keeps it favorited`() = runTest {
+        val device = BluetoothDeviceInfo(
+            address = "AA:BB:CC:DD:EE:FF",
+            name = "TestDevice",
+            isAlertEnabled = true,
+            connectionState = ConnectionState.DISCONNECTED,
+            isFavorite = true,
+        )
+        repo.upsert(device)
+
+        vm.setEnabled("AA:BB:CC:DD:EE:FF", false)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val stored = repo.getAll().single()
+        assertTrue("Disabling must not un-favorite the device", stored.isFavorite)
+        assertFalse(stored.isAlertEnabled)
+    }
+
+    @Test
+    fun `re-enabling clears the auto-disable window`() = runTest {
+        val device = BluetoothDeviceInfo(
+            address = "AA:BB:CC:DD:EE:FF",
+            name = "TestDevice",
+            isAlertEnabled = false,
+            connectionState = ConnectionState.DISCONNECTED,
+            isFavorite = true,
+            disabledUntil = System.currentTimeMillis() + 60_000L,
+        )
+        repo.upsert(device)
+
+        vm.setEnabled("AA:BB:CC:DD:EE:FF", true)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val stored = repo.getAll().single()
+        assertTrue(stored.isAlertEnabled)
+        assertEquals(null, stored.disabledUntil)
     }
 
     @Test
