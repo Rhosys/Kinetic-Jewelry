@@ -19,9 +19,16 @@ class ProcessNotificationUseCase
             groupName: String,
             contactName: String?,
         ) {
-            if (contactName.isNullOrBlank()) return
+            if (contactName.isNullOrBlank()) {
+                logger.info("Notification skipped: contactName is blank for $packageName")
+                return
+            }
 
-            val appFilter = appFilterRepository.getByPackageName(packageName) ?: return
+            val appFilter = appFilterRepository.getByPackageName(packageName)
+            if (appFilter == null) {
+                logger.info("Notification skipped: $packageName not in app filter list")
+                return
+            }
             if (!appFilter.isWatched) {
                 logger.info("Notification ignored: $packageName is not watched")
                 return

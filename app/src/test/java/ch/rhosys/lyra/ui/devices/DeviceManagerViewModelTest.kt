@@ -5,7 +5,6 @@ import ch.rhosys.lyra.domain.model.ConnectionState
 import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.fake.FakeBluetoothController
 import ch.rhosys.lyra.fake.FakeBluetoothDeviceRepository
-import ch.rhosys.lyra.fake.FakePhoneVibrator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -32,7 +31,7 @@ class DeviceManagerViewModelTest {
         Dispatchers.setMain(testDispatcher)
         controller = FakeBluetoothController()
         repo = FakeBluetoothDeviceRepository()
-        vm = DeviceManagerViewModel(repo, controller, FakePhoneVibrator())
+        vm = DeviceManagerViewModel(repo, controller)
     }
 
     @After
@@ -136,7 +135,8 @@ class DeviceManagerViewModelTest {
 
         assertEquals(1, controller.sentCommands.size)
         assertEquals("AA:BB:CC:DD:EE:FF", controller.sentCommands[0].address)
-        assertEquals(VibrationMode.SHORT_PULSE.blocks, controller.sentCommands[0].blocks)
+        assertEquals(VibrationMode.LONG_PULSE.blocks, controller.sentCommands[0].blocks)
+        assertEquals(2, controller.sentCommands[0].repeat)
     }
 
     @Test

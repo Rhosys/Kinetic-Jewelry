@@ -2,7 +2,6 @@ package ch.rhosys.lyra.ui.apps
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.rhosys.lyra.domain.PhoneVibrator
 import ch.rhosys.lyra.domain.model.AppFilter
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.NotificationHistoryEntry
@@ -10,6 +9,7 @@ import ch.rhosys.lyra.domain.model.VibrationMode
 import ch.rhosys.lyra.domain.repository.AppFilterRepository
 import ch.rhosys.lyra.domain.repository.ContactFilterRepository
 import ch.rhosys.lyra.domain.repository.NotificationHistoryRepository
+import ch.rhosys.lyra.domain.usecase.DeviceVibrationDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,7 +27,7 @@ class AppFilterViewModel
         private val appRepo: AppFilterRepository,
         private val contactRepo: ContactFilterRepository,
         private val historyRepo: NotificationHistoryRepository,
-        private val phoneVibrator: PhoneVibrator,
+        private val dispatcher: DeviceVibrationDispatcher,
     ) : ViewModel() {
         val apps: StateFlow<List<AppFilter>> =
             appRepo
@@ -163,9 +163,9 @@ class AppFilterViewModel
             }
         }
 
-        /** Plays [mode] on the phone's vibrator so the user can feel it while picking a mode. */
+        /** Plays [mode] on the phone and every favorited, enabled device so the user can feel it while picking a mode. */
         fun demoVibration(mode: VibrationMode) {
-            viewModelScope.launch { phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, mode.blocks) }
+            viewModelScope.launch { dispatcher.dispatch(mode.blocks) }
         }
 
         private suspend fun refreshContacts(packageName: String) {

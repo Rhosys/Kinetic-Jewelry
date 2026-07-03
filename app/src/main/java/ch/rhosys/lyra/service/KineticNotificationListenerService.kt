@@ -65,6 +65,8 @@ class KineticNotificationListenerService : NotificationListenerService() {
         val (groupName, contactName) = extractSender(sbn)
         if (contactName.isNullOrBlank()) return
 
+        logger.info("Notification received: pkg=${sbn.packageName}, contact=$contactName, group=$groupName")
+
         eventBus.emitEvent(
             NotificationEvent(
                 packageName = sbn.packageName,
@@ -76,36 +78,40 @@ class KineticNotificationListenerService : NotificationListenerService() {
         )
 
         scope.launch {
-            val appLabel = try {
-                packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
-            } catch (_: Exception) {
-                sbn.packageName
-            }
+            try {
+                val appLabel = try {
+                    packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
+                } catch (_: Exception) {
+                    sbn.packageName
+                }
 
-            // Cache the app icon while package visibility is elevated in the listener context.
-            if (!AppIconCache.hasIcon(applicationContext, sbn.packageName)) {
-                try {
-                    val icon = packageManager.getApplicationIcon(sbn.packageName)
-                    AppIconCache.saveIcon(applicationContext, sbn.packageName, icon)
-                } catch (_: Exception) { }
-            }
+                // Cache the app icon while package visibility is elevated in the listener context.
+                if (!AppIconCache.hasIcon(applicationContext, sbn.packageName)) {
+                    try {
+                        val icon = packageManager.getApplicationIcon(sbn.packageName)
+                        AppIconCache.saveIcon(applicationContext, sbn.packageName, icon)
+                    } catch (_: Exception) { }
+                }
 
-            val personIconUri = extractPersonIconUri(sbn)
+                val personIconUri = extractPersonIconUri(sbn)
 
-            notificationHistoryRepository.record(
-                NotificationHistoryEntry(
-                    packageName = sbn.packageName,
-                    appLabel = appLabel,
-                    senderName = contactName,
-                    personIconUri = personIconUri,
-                    postedAt = sbn.postTime,
+                notificationHistoryRepository.record(
+                    NotificationHistoryEntry(
+                        packageName = sbn.packageName,
+                        appLabel = appLabel,
+                        senderName = contactName,
+                        personIconUri = personIconUri,
+                        postedAt = sbn.postTime,
+                    )
                 )
-            )
-            processNotification.execute(
-                packageName = sbn.packageName,
-                groupName = groupName,
-                contactName = contactName,
-            )
+                processNotification.execute(
+                    packageName = sbn.packageName,
+                    groupName = groupName,
+                    contactName = contactName,
+                )
+            } catch (e: Exception) {
+                logger.error("ProcessNotification crashed for ${sbn.packageName}/$contactName", e)
+            }
         }
     }
 

@@ -1,9 +1,13 @@
 package ch.rhosys.lyra.ui.settings
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,8 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -315,7 +320,16 @@ private fun SettingsScreenContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (logEntries.isNotEmpty()) {
-            OutlinedButton(onClick = { vm.clearLogs() }) { Text("Clear") }
+            Row {
+                OutlinedButton(onClick = {
+                    val text = logEntries.joinToString("\n") { "${it.timestamp} [${it.level}] ${it.message}" }
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Kinetic Logs", text))
+                    Toast.makeText(context, "Logs copied", Toast.LENGTH_SHORT).show()
+                }) { Text("Copy") }
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedButton(onClick = { vm.clearLogs() }) { Text("Clear") }
+            }
             Spacer(modifier = Modifier.height(8.dp))
         }
 
@@ -349,7 +363,7 @@ private fun SettingsScreenContent(
                         )
                     }
                 }
-                items(logEntries, key = { "${it.timestamp}_${it.message.hashCode()}" }) { entry ->
+                itemsIndexed(logEntries, key = { index, entry -> "${index}_${entry.timestamp}" }) { _, entry ->
                     val color =
                         when (entry.level) {
                             LogLevel.ERROR -> MaterialTheme.colorScheme.error

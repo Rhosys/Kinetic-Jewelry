@@ -37,12 +37,17 @@ class DeviceVibrationDispatcher
         ) {
             // The phone is always available and isn't part of the alert-enabled device list —
             // it vibrates unconditionally, independent of whatever BLE/Wear devices are configured.
-            phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, blocks, repeat)
+            val phoneResult = phoneVibrator.sendVibration(PhoneVibrator.ADDRESS, blocks, repeat)
+            if (phoneResult.isFailure) {
+                logger.error("Phone vibration failed: ${phoneResult.exceptionOrNull()?.message}")
+            }
 
             val allFavorites = bluetoothDeviceRepository.observeFavorites().first()
             val userTimeoutMs = appSettings.connectionTimeoutMs.first()
             val multiDeviceMode = appSettings.multiDeviceMode.first()
             val autoReEnable = appSettings.autoReEnable24h.first()
+
+            logger.info("Favorite devices: ${allFavorites.size} (addresses: ${allFavorites.map { "${it.name}/${it.address}" }})")
 
             // Lazy auto-re-enable: bring back devices whose disable window has expired
             val now = System.currentTimeMillis()
@@ -51,10 +56,14 @@ class DeviceVibrationDispatcher
                     when {
                         !device.isCurrentlyDisabled -> device
                         autoReEnable && now >= (device.disabledUntil ?: 0) + AppSettingsProvider.AUTO_RE_ENABLE_DURATION_MS -> {
+                            logger.info("Auto-re-enabling ${device.name} (${device.address}) — disable window expired")
                             bluetoothDeviceRepository.setDisabledUntil(device.address, null)
                             device.copy(disabledUntil = null)
                         }
-                        else -> null
+                        else -> {
+                            logger.info("Skipping disabled device ${device.name} (${device.address})")
+                            null
+                        }
                     }
                 }
 
@@ -63,7 +72,7 @@ class DeviceVibrationDispatcher
                 return
             }
 
-            logger.info("Dispatching to ${activeDevices.size} device(s) via $multiDeviceMode")
+            logger.info("Dispatching to ${activeDevices.size} device(s) via $multiDeviceMode (timeout: ${userTimeoutMs}ms)")
             when (multiDeviceMode) {
                 MultiDeviceMode.FIRST_WINS -> dispatchFirstWins(activeDevices, blocks, repeat, userTimeoutMs)
                 MultiDeviceMode.ALL_DEVICES -> dispatchAllDevices(activeDevices, blocks, repeat, userTimeoutMs)
@@ -86,6 +95,7 @@ class DeviceVibrationDispatcher
                     succeeded = true
                     break
                 } else {
+                    logger.error("Device ${device.name} (${device.address}) failed: ${result.exceptionOrNull()?.message}")
                     bluetoothDeviceRepository.recordFailure(device.address)
                 }
             }
@@ -111,6 +121,7 @@ class DeviceVibrationDispatcher
                                     firstAck.complete(Unit)
                                     bluetoothDeviceRepository.recordSuccess(device.address)
                                 } else {
+                                    logger.error("Device ${device.name} (${device.address}) failed: ${result.exceptionOrNull()?.message}")
                                     bluetoothDeviceRepository.recordFailure(device.address)
                                 }
                             }
@@ -125,7 +136,7 @@ class DeviceVibrationDispatcher
                     firstAck.await()
                     delay(1_000L)
                 } catch (_: Exception) {
-                    // All devices failed — nothing to cancel
+                    logger.warn("ALL_DEVICES: all ${devices.size} device(s) failed — no ACK received")
                 }
                 jobs.forEach { it.cancel() }
             }
