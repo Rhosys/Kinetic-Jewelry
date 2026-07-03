@@ -72,7 +72,9 @@ fun DebugVibrationScreen(vm: DebugVibrationViewModel = hiltViewModel()) {
                     .padding(16.dp),
         ) {
             Text(
-                "This screen vibrates the phone only — it never sends to BLE or Wear OS devices.",
+                "This screen sends real vibrations to the phone and every favorited, enabled " +
+                    "device — the same delivery path as a live notification. Only the pattern below " +
+                    "is explicit instead of coming from an app/contact's configured mode.",
                 style = MaterialTheme.typography.bodyMedium,
             )
 

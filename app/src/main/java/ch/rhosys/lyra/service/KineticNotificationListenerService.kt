@@ -47,6 +47,11 @@ class KineticNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val notification = sbn.notification ?: return
 
+        // Never treat our own (or our Wear OS companion's, which shares this applicationId) vibration
+        // confirmation notifications as user notifications — otherwise a test vibration re-triggers
+        // itself via the configured app/contact vibration strategy, stomping the explicit test pattern.
+        if (sbn.packageName == packageName) return
+
         // Noise filter: skip summaries, ongoing, and blanks
         if (notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) return
         if (sbn.isOngoing) return

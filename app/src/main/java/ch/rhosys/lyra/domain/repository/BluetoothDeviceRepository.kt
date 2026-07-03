@@ -4,7 +4,8 @@ import ch.rhosys.lyra.domain.model.BluetoothDeviceInfo
 import kotlinx.coroutines.flow.Flow
 
 interface BluetoothDeviceRepository {
-    fun observeAlertEnabled(): Flow<List<BluetoothDeviceInfo>>
+    /** All favorited devices, regardless of [BluetoothDeviceInfo.isAlertEnabled]. */
+    fun observeFavorites(): Flow<List<BluetoothDeviceInfo>>
 
     suspend fun getAll(): List<BluetoothDeviceInfo>
 
@@ -19,5 +20,11 @@ interface BluetoothDeviceRepository {
     suspend fun setDisabledUntil(
         address: String,
         disabledUntil: Long?,
+    )
+
+    /** Manually toggles whether a favorited device is active. Enabling also clears any auto-disable window. */
+    suspend fun setEnabled(
+        address: String,
+        enabled: Boolean,
     )
 }

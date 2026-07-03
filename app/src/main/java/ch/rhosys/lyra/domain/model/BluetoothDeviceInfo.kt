@@ -6,6 +6,9 @@ data class BluetoothDeviceInfo(
     val isAlertEnabled: Boolean,
     val connectionState: ConnectionState,
     val deviceType: DeviceType = DeviceType.BLE_JEWELRY,
+    /** Whether the user has added this device to their Favorites. Independent of [isAlertEnabled] — a
+     * disabled favorite still shows in the Favorites list; a non-favorite is a Recent Device. */
+    val isFavorite: Boolean = false,
     /** Per-device timeout ceiling in ms. null = use the global user setting. */
     val connectionTimeoutMs: Long? = null,
     /** Epoch ms until which this device is suppressed after repeated timeouts. null = active. */

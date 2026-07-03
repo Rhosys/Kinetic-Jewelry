@@ -16,8 +16,8 @@ class BluetoothDeviceRepositoryImpl
     constructor(
         private val dao: BluetoothDeviceDao,
     ) : BluetoothDeviceRepository {
-        override fun observeAlertEnabled(): Flow<List<BluetoothDeviceInfo>> =
-            dao.observeAlertEnabled().map { entities -> entities.map { it.toDomain() } }
+        override fun observeFavorites(): Flow<List<BluetoothDeviceInfo>> =
+            dao.observeFavorites().map { entities -> entities.map { it.toDomain() } }
 
         override suspend fun getAll(): List<BluetoothDeviceInfo> = dao.getAll().map { it.toDomain() }
 
@@ -43,4 +43,12 @@ class BluetoothDeviceRepositoryImpl
             address: String,
             disabledUntil: Long?,
         ) = dao.setDisabledUntil(address, disabledUntil)
+
+        override suspend fun setEnabled(
+            address: String,
+            enabled: Boolean,
+        ) {
+            dao.setAlertEnabled(address, enabled)
+            if (enabled) dao.setDisabledUntil(address, null)
+        }
     }
