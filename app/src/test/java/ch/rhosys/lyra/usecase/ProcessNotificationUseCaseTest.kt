@@ -7,6 +7,7 @@ import ch.rhosys.lyra.domain.model.ConnectionState
 import ch.rhosys.lyra.domain.model.ContactFilter
 import ch.rhosys.lyra.domain.model.MultiDeviceMode
 import ch.rhosys.lyra.domain.model.VibrationMode
+import ch.rhosys.lyra.domain.usecase.DeviceVibrationDispatcher
 import ch.rhosys.lyra.domain.usecase.ProcessNotificationUseCase
 import ch.rhosys.lyra.fake.FakeAppFilterRepository
 import ch.rhosys.lyra.fake.FakeAppSettingsProvider
@@ -30,12 +31,22 @@ class ProcessNotificationUseCaseTest {
     private lateinit var appSettings: FakeAppSettingsProvider
     private lateinit var useCase: ProcessNotificationUseCase
 
+    private fun buildUseCase(): ProcessNotificationUseCase =
+        ProcessNotificationUseCase(
+            appRepo,
+            contactRepo,
+            DeviceVibrationDispatcher(deviceRepo, btController, phoneVibrator, appSettings, AppLogger()),
+            AppLogger(),
+        )
+
+    // Favorited + enabled — the only combination that actually receives real vibrations.
     private val alertDevice =
         BluetoothDeviceInfo(
             address = "AA:BB:CC:DD:EE:FF",
             name = "Ring",
             isAlertEnabled = true,
             connectionState = ConnectionState.DISCONNECTED,
+            isFavorite = true,
         )
 
     private fun watchedApp(
@@ -52,7 +63,7 @@ class ProcessNotificationUseCaseTest {
         btController = FakeBluetoothController()
         phoneVibrator = FakePhoneVibrator()
         appSettings = FakeAppSettingsProvider()
-        useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings, AppLogger())
+        useCase = buildUseCase()
     }
 
     // ── Scenario 1: un-watched app ───────────────────────────────────────────
@@ -203,7 +214,9 @@ class ProcessNotificationUseCaseTest {
         runTest {
             appRepo.upsert(watchedApp())
             deviceRepo.upsert(alertDevice)
-            deviceRepo.upsert(BluetoothDeviceInfo("11:22:33:44:55:66", "Bracelet", true, ConnectionState.DISCONNECTED))
+            deviceRepo.upsert(
+                BluetoothDeviceInfo("11:22:33:44:55:66", "Bracelet", true, ConnectionState.DISCONNECTED, isFavorite = true),
+            )
 
             useCase.execute("com.example", "", "Alice")
 
@@ -220,7 +233,23 @@ class ProcessNotificationUseCaseTest {
         runTest {
             appRepo.upsert(watchedApp())
             deviceRepo.upsert(
-                BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", isAlertEnabled = false, ConnectionState.DISCONNECTED),
+                BluetoothDeviceInfo(
+                    "AA:BB:CC:DD:EE:FF", "Ring", isAlertEnabled = false, ConnectionState.DISCONNECTED,
+                    isFavorite = true,
+                ),
+            )
+
+            useCase.execute("com.example", "", "Alice")
+
+            assertTrue(btController.sentCommands.isEmpty())
+        }
+
+    @Test
+    fun `non-favorite device never receives vibrations even when isAlertEnabled is true`() =
+        runTest {
+            appRepo.upsert(watchedApp())
+            deviceRepo.upsert(
+                BluetoothDeviceInfo("AA:BB:CC:DD:EE:FF", "Ring", isAlertEnabled = true, ConnectionState.DISCONNECTED, isFavorite = false),
             )
 
             useCase.execute("com.example", "", "Alice")
@@ -234,11 +263,13 @@ class ProcessNotificationUseCaseTest {
     fun `FIRST_WINS mode sends to first device only`() =
         runTest {
             appSettings = FakeAppSettingsProvider(mode = MultiDeviceMode.FIRST_WINS)
-            useCase = ProcessNotificationUseCase(appRepo, contactRepo, deviceRepo, btController, phoneVibrator, appSettings, AppLogger())
+            useCase = buildUseCase()
 
             appRepo.upsert(watchedApp())
             deviceRepo.upsert(alertDevice)
-            deviceRepo.upsert(BluetoothDeviceInfo("11:22:33:44:55:66", "Bracelet", true, ConnectionState.DISCONNECTED))
+            deviceRepo.upsert(
+                BluetoothDeviceInfo("11:22:33:44:55:66", "Bracelet", true, ConnectionState.DISCONNECTED, isFavorite = true),
+            )
 
             useCase.execute("com.example", "", "Alice")
 

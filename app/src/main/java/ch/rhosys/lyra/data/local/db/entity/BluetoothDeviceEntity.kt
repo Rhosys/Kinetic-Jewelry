@@ -24,6 +24,8 @@ data class BluetoothDeviceEntity(
     val consecutiveTimeouts: Int = 0,
     @ColumnInfo(name = "last_success_at")
     val lastSuccessAt: Long? = null,
+    @ColumnInfo(name = "is_favorite", defaultValue = "0")
+    val isFavorite: Boolean = false,
 ) {
     fun toDomain(): BluetoothDeviceInfo =
         BluetoothDeviceInfo(
@@ -36,6 +38,7 @@ data class BluetoothDeviceEntity(
             disabledUntil = disabledUntil,
             consecutiveTimeouts = consecutiveTimeouts,
             lastSuccessAt = lastSuccessAt,
+            isFavorite = isFavorite,
         )
 
     companion object {
@@ -52,6 +55,7 @@ data class BluetoothDeviceEntity(
             disabledUntil = device.disabledUntil,
             consecutiveTimeouts = device.consecutiveTimeouts,
             lastSuccessAt = device.lastSuccessAt,
+            isFavorite = device.isFavorite,
         )
     }
 }

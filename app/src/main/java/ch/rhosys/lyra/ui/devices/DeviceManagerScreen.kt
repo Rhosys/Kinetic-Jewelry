@@ -2,6 +2,7 @@ package ch.rhosys.lyra.ui.devices
 
 import android.Manifest
 import android.os.Build
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,11 +20,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,7 +42,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -93,8 +99,8 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
             },
         )
 
-    val alertDevices by vm.alertDevices.collectAsState()
-    val pairedDevices by vm.pairedDevices.collectAsState()
+    val favorites by vm.favorites.collectAsState()
+    val recentDevices by vm.recentDevices.collectAsState()
     val scanResults by vm.scanResults.collectAsState()
     val isScanning by vm.isScanning.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -107,11 +113,11 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
         if (blePermissions.allPermissionsGranted) vm.refreshDevices()
     }
 
-    val alertAddresses = alertDevices.map { it.address }.toSet()
-    val pairedAddresses = pairedDevices.map { it.address }.toSet()
+    val favoriteAddresses = favorites.map { it.address }.toSet()
+    val recentAddresses = recentDevices.map { it.address }.toSet()
     val newScanResults =
-        remember(scanResults, alertAddresses, pairedAddresses) {
-            scanResults.filter { it.address !in alertAddresses && it.address !in pairedAddresses }
+        remember(scanResults, favoriteAddresses, recentAddresses) {
+            scanResults.filter { it.address !in favoriteAddresses && it.address !in recentAddresses }
         }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { innerPadding ->
@@ -120,27 +126,25 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
 
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Registered Devices",
+                    "Favorites",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                if (alertDevices.isEmpty()) {
+                if (favorites.isEmpty()) {
                     Text(
-                        "No registered devices yet.",
+                        "No favorite devices yet.",
                         modifier = Modifier.padding(horizontal = 16.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     DeviceRowList(maxHeight = sectionMaxHeight) {
-                        items(alertDevices, key = { "alert_${it.address}" }) { device ->
-                            DeviceRow(
+                        items(favorites, key = { "favorite_${it.address}" }) { device ->
+                            FavoriteDeviceRow(
                                 device = device,
-                                isAlertEnabled = true,
-                                onEnable = { vm.enableAlert(device) },
+                                onSetEnabled = { enabled -> vm.setEnabled(device.address, enabled) },
                                 onTest = { vm.testDevice(device.address) },
-                                onRemove = { vm.disableAlert(device.address) },
-                                onReEnable = { vm.reEnableDevice(device.address) },
+                                onRemove = { vm.removeFavorite(device.address) },
                             )
                             HorizontalDivider()
                         }
@@ -148,11 +152,11 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                 }
 
                 Text(
-                    "Known Devices",
+                    "Recent Devices",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                if (pairedDevices.isEmpty()) {
+                if (recentDevices.isEmpty()) {
                     Text(
                         "No paired devices found. Pair a device via Bluetooth settings.",
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -161,14 +165,10 @@ fun DeviceManagerScreen(vm: DeviceManagerViewModel = hiltViewModel()) {
                     )
                 } else {
                     DeviceRowList(maxHeight = sectionMaxHeight) {
-                        items(pairedDevices, key = { "paired_${it.address}" }) { device ->
-                            DeviceRow(
+                        items(recentDevices, key = { "recent_${it.address}" }) { device ->
+                            RecentDeviceRow(
                                 device = device,
-                                isAlertEnabled = false,
-                                onEnable = { vm.enableAlert(device) },
-                                onTest = { vm.testDevice(device.address) },
-                                onRemove = { vm.disableAlert(device.address) },
-                                onReEnable = { vm.reEnableDevice(device.address) },
+                                onAdd = { vm.addFavorite(device) },
                             )
                             HorizontalDivider()
                         }
@@ -311,14 +311,14 @@ private fun ConnectionStatusChip(state: ConnectionState) {
 }
 
 @Composable
-private fun DeviceRow(
+private fun FavoriteDeviceRow(
     device: BluetoothDeviceInfo,
-    isAlertEnabled: Boolean,
-    onEnable: () -> Unit,
+    onSetEnabled: (Boolean) -> Unit,
     onTest: () -> Unit,
     onRemove: () -> Unit,
-    onReEnable: () -> Unit,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -326,7 +326,7 @@ private fun DeviceRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(device.name, style = MaterialTheme.typography.bodyLarge)
             Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
-            if (isAlertEnabled && device.isCurrentlyDisabled) {
+            if (device.isCurrentlyDisabled) {
                 Text(
                     "Auto-disabled — repeated timeouts",
                     style = MaterialTheme.typography.labelSmall,
@@ -335,16 +335,52 @@ private fun DeviceRow(
             }
         }
 
-        if (isAlertEnabled) {
-            if (device.isCurrentlyDisabled) {
-                Button(onClick = onReEnable, modifier = Modifier.padding(start = 8.dp)) { Text("Re-enable") }
-            } else {
-                ConnectionStatusChip(device.connectionState)
-                Button(onClick = onTest, modifier = Modifier.padding(start = 8.dp)) { Text("Test") }
-            }
-            OutlinedButton(onClick = onRemove, modifier = Modifier.padding(start = 4.dp)) { Text("Remove") }
-        } else {
-            Switch(checked = false, onCheckedChange = { if (it) onEnable() })
+        if (device.isAlertEnabled && !device.isCurrentlyDisabled) {
+            ConnectionStatusChip(device.connectionState)
         }
+        Switch(
+            checked = device.isAlertEnabled && !device.isCurrentlyDisabled,
+            onCheckedChange = onSetEnabled,
+            modifier = Modifier.padding(start = 8.dp),
+        )
+
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text("Test") },
+                    onClick = {
+                        menuExpanded = false
+                        onTest()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Remove") },
+                    onClick = {
+                        menuExpanded = false
+                        onRemove()
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentDeviceRow(
+    device: BluetoothDeviceInfo,
+    onAdd: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(device.name, style = MaterialTheme.typography.bodyLarge)
+            Text(device.deviceSubtitle, style = MaterialTheme.typography.labelSmall)
+        }
+        OutlinedButton(onClick = onAdd) { Text("+ Add") }
     }
 }

@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BluetoothDeviceDao {
-    @Query("SELECT * FROM bluetooth_devices WHERE isAlertEnabled = 1")
-    fun observeAlertEnabled(): Flow<List<BluetoothDeviceEntity>>
+    @Query("SELECT * FROM bluetooth_devices WHERE is_favorite = 1")
+    fun observeFavorites(): Flow<List<BluetoothDeviceEntity>>
 
     @Query("SELECT * FROM bluetooth_devices")
     suspend fun getAll(): List<BluetoothDeviceEntity>
@@ -42,5 +42,11 @@ interface BluetoothDeviceDao {
     suspend fun setLastSuccessAt(
         address: String,
         epochMs: Long,
+    )
+
+    @Query("UPDATE bluetooth_devices SET isAlertEnabled = :enabled WHERE address = :address")
+    suspend fun setAlertEnabled(
+        address: String,
+        enabled: Boolean,
     )
 }

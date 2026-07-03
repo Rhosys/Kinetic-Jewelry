@@ -27,9 +27,11 @@ class DeviceManagerViewModel
         private val bluetoothController: BluetoothController,
         private val phoneVibrator: PhoneVibrator,
     ) : ViewModel() {
-        val alertDevices: StateFlow<List<BluetoothDeviceInfo>> =
+        /** Favorited devices, shown regardless of [BluetoothDeviceInfo.isAlertEnabled] — disabling a
+         * favorite keeps it here rather than demoting it back to Recent Devices. */
+        val favorites: StateFlow<List<BluetoothDeviceInfo>> =
             combine(
-                deviceRepo.observeAlertEnabled(),
+                deviceRepo.observeFavorites(),
                 bluetoothController.connectedDevices,
             ) { dbDevices, connected ->
                 dbDevices.map { d ->
@@ -37,13 +39,14 @@ class DeviceManagerViewModel
                 }.sortedBy { it.name.lowercase() }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-        val pairedDevices: StateFlow<List<BluetoothDeviceInfo>> =
+        /** Paired/known devices that haven't been favorited yet. */
+        val recentDevices: StateFlow<List<BluetoothDeviceInfo>> =
             combine(
                 bluetoothController.pairedDevices,
-                deviceRepo.observeAlertEnabled(),
-            ) { paired, alertEnabled ->
-                val alertAddresses = alertEnabled.map { it.address }.toSet()
-                paired.filter { it.address !in alertAddresses }.sortedBy { it.name.lowercase() }
+                deviceRepo.observeFavorites(),
+            ) { paired, favorites ->
+                val favoriteAddresses = favorites.map { it.address }.toSet()
+                paired.filter { it.address !in favoriteAddresses }.sortedBy { it.name.lowercase() }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         val scanResults: StateFlow<List<BluetoothDeviceInfo>> =
@@ -74,11 +77,20 @@ class DeviceManagerViewModel
             bluetoothController.refreshPairedDevices()
         }
 
-        fun enableAlert(device: BluetoothDeviceInfo) {
-            viewModelScope.launch { deviceRepo.upsert(device.copy(isAlertEnabled = true)) }
+        /** Adds [device] to Favorites, immediately enabled. */
+        fun addFavorite(device: BluetoothDeviceInfo) {
+            viewModelScope.launch { deviceRepo.upsert(device.copy(isFavorite = true, isAlertEnabled = true)) }
         }
 
-        fun disableAlert(address: String) {
+        /** Toggles whether a favorited device is active; re-enabling also clears any auto-disable window. */
+        fun setEnabled(
+            address: String,
+            enabled: Boolean,
+        ) {
+            viewModelScope.launch { deviceRepo.setEnabled(address, enabled) }
+        }
+
+        fun removeFavorite(address: String) {
             viewModelScope.launch { deviceRepo.delete(address) }
         }
 
@@ -95,9 +107,5 @@ class DeviceManagerViewModel
                     _snackbar.emit("Vibration sent")
                 }
             }
-        }
-
-        fun reEnableDevice(address: String) {
-            viewModelScope.launch { deviceRepo.setDisabledUntil(address, null) }
         }
     }
