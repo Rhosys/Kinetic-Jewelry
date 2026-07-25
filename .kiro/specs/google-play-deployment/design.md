@@ -157,7 +157,7 @@ Key points:
 - `STORE_PASSWORD` and `KEY_PASSWORD` are the same value (PKCS12 uses one password)
 - Plaintext exists only in memory/temp file for the duration of the job
 - The IAM role needs `kms:Decrypt` on `alias/deployment-encryption-key` in `eu-west-1`
-- Only one CI/CD variable required: `AWS_ACCOUNT_ID` = `REDACTED`
+- Only one CI/CD variable required: `AWS_ACCOUNT_ID` = `<ACCOUNT_ID>`
 
 ### 6. GitLab CI Pipeline (`.gitlab-ci.yml`)
 
@@ -444,7 +444,7 @@ versionName = "1.0.0"   // Semantic versioning: MAJOR.MINOR.PATCH
 | AWS Region | `eu-west-1` |
 | AWS Permission | `kms:Decrypt` on `alias/deployment-encryption-key` |
 | AWS Auth method | GitLab OIDC → `GITLAB_OIDC_TOKEN` written to `$AWS_WEB_IDENTITY_TOKEN_FILE` |
-| CI Variable | `AWS_ACCOUNT_ID` = `REDACTED` |
+| CI Variable | `AWS_ACCOUNT_ID` = `<ACCOUNT_ID>` |
 | GCP WIF Pool | `gitlab-oidc` in project `rhosys-apps` (project number `454629444494`) |
 | GCP WIF Provider | `gitlab-com` |
 | GCP Service Account | `gitlab-play-store@rhosys-apps.iam.gserviceaccount.com` |

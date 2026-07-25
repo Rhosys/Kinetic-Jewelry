@@ -179,7 +179,7 @@ Convert the Kinetic-Jewelry Android app from its current `com.rhosys.kineticjewe
 - No property-based tests — this feature is entirely build config, CI/CD, infrastructure, and scripts
 - The `deployment/android-upload-signing.json` keystore must be generated separately using `generate-android-keystore --alias lyra` from the `_tools` repo
 - The Terraform change (task 8.1) is in a separate repo (`_rhosys-apps-infra`) and should be committed/applied independently
-- Only one CI/CD variable needed in GitLab project settings: `AWS_ACCOUNT_ID` = `REDACTED`
+- Only one CI/CD variable needed in GitLab project settings: `AWS_ACCOUNT_ID` = `<ACCOUNT_ID>`
 - All Gradle commands run from project root (no `cd android` prefix)
 - Docker image for CI is `cimg/android:2024.01` (lean Android SDK) — NOT `reactnativecommunity/react-native-android`
 

@@ -119,7 +119,7 @@ The project lives at `rhosys/rapid/kinetic-jewelry` on GitLab.
 7. WHEN code is pushed to the main branch, THE Build_Pipeline `build-release` job SHALL upload the signed AAB as a CI artifact with 30-day retention
 8. THE Build_Pipeline SHALL use a lean Android SDK Docker image with JDK 17 (e.g., `cimg/android:2024.01` or equivalent) for build jobs — not the React Native community image
 9. IF the KMS decryption fails or the OIDC role assumption fails, THEN THE Build_Pipeline SHALL fail the job with an error indicating the decryption or role assumption failure
-10. THE CI_Pipeline SHALL require only one non-secret CI/CD variable: `AWS_ACCOUNT_ID` (value `REDACTED`), configured in GitLab project settings
+10. THE CI_Pipeline SHALL require only one non-secret CI/CD variable: `AWS_ACCOUNT_ID` (value `<ACCOUNT_ID>`), configured in GitLab project settings
 
 ### Requirement 7: Play Store Deployment
 
