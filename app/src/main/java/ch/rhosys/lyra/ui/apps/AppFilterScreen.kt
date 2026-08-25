@@ -132,6 +132,7 @@ fun AppFilterScreen(vm: AppFilterViewModel = hiltViewModel()) {
                         onContactLevelChange = { vm.setContactLevelEnabled(app, it) },
                         onContactRemove = { contact -> vm.removeContact(contact) },
                         onVibrationModeChange = { vm.setAppVibrationMode(app.packageName, it) },
+                        onCallVibrationModeChange = { vm.setAppCallVibrationMode(app.packageName, it) },
                         onContactVibrationModeChange = { contact, mode -> vm.setContactVibrationMode(contact, mode) },
                         onDemo = vm::demoVibration,
                         onRemove = { vm.removeApp(app.packageName) },
@@ -184,6 +185,7 @@ private fun AppSection(
     onContactLevelChange: (Boolean) -> Unit,
     onContactRemove: (ContactFilter) -> Unit,
     onVibrationModeChange: (VibrationMode) -> Unit,
+    onCallVibrationModeChange: (VibrationMode?) -> Unit,
     onContactVibrationModeChange: (ContactFilter, VibrationMode?) -> Unit,
     onDemo: (VibrationMode) -> Unit,
     onRemove: () -> Unit,
@@ -233,6 +235,23 @@ private fun AppSection(
         ) {
             Text("Vibration", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             VibrationModePicker(mode = app.vibrationMode, onModeSelected = onVibrationModeChange, onDemo = onDemo)
+        }
+
+        // Call vibration (only offered once we've seen a CATEGORY_CALL notification from this app,
+        // so the picker doesn't appear for apps that never post calls)
+        if (app.hasCallCategory) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text("Call Vibration", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                NullableVibrationModePicker(
+                    mode = app.callVibrationMode,
+                    onModeSelected = onCallVibrationModeChange,
+                    onDemo = onDemo,
+                    defaultLabel = "Same as messages",
+                )
+            }
         }
 
         // "All Users" toggle
@@ -320,13 +339,14 @@ private fun NullableVibrationModePicker(
     mode: VibrationMode?,
     onModeSelected: (VibrationMode?) -> Unit,
     onDemo: (VibrationMode) -> Unit,
+    defaultLabel: String = "App default",
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: "App default") }
+        TextButton(onClick = { expanded = true }) { Text(mode?.displayName ?: defaultLabel) }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("App default") },
+                text = { Text(defaultLabel) },
                 onClick = {
                     expanded = false
                     onModeSelected(null)

@@ -16,7 +16,7 @@ import ch.rhosys.lyra.data.local.db.entity.NotificationHistoryEntity
 
 @Database(
     entities = [AppFilterEntity::class, ContactFilterEntity::class, BluetoothDeviceEntity::class, NotificationHistoryEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(RoomTypeConverters::class)
@@ -83,6 +83,14 @@ abstract class AppDatabase : RoomDatabase() {
                     // Pre-migration, every stored row was a "registered" device (the old two-state
                     // model had no separate favorite concept) — carry that forward as favorited.
                     db.execSQL("UPDATE `bluetooth_devices` SET `is_favorite` = 1 WHERE `isAlertEnabled` = 1")
+                }
+            }
+
+        val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `app_filters` ADD COLUMN `has_call_category` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `app_filters` ADD COLUMN `call_vibration_mode_id` INTEGER")
                 }
             }
     }

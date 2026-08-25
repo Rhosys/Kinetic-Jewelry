@@ -13,6 +13,8 @@ data class AppFilterEntity(
     val isWatched: Boolean,
     @ColumnInfo(name = "vibration_mode_id") val vibrationModeId: Int,
     val isContactLevelEnabled: Boolean,
+    @ColumnInfo(name = "has_call_category", defaultValue = "0") val hasCallCategory: Boolean = false,
+    @ColumnInfo(name = "call_vibration_mode_id") val callVibrationModeId: Int? = null,
 ) {
     fun toDomain(): AppFilter = AppFilter(
         packageName = packageName,
@@ -20,6 +22,8 @@ data class AppFilterEntity(
         isWatched = isWatched,
         vibrationMode = VibrationMode.fromStableId(vibrationModeId),
         isContactLevelEnabled = isContactLevelEnabled,
+        hasCallCategory = hasCallCategory,
+        callVibrationMode = callVibrationModeId?.let { VibrationMode.fromStableId(it) },
     )
 
     companion object {
@@ -29,6 +33,8 @@ data class AppFilterEntity(
             isWatched = filter.isWatched,
             vibrationModeId = filter.vibrationMode.stableId,
             isContactLevelEnabled = filter.isContactLevelEnabled,
+            hasCallCategory = filter.hasCallCategory,
+            callVibrationModeId = filter.callVibrationMode?.stableId,
         )
     }
 }

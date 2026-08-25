@@ -52,9 +52,12 @@ class KineticNotificationListenerService : NotificationListenerService() {
         // itself via the configured app/contact vibration strategy, stomping the explicit test pattern.
         if (sbn.packageName == packageName) return
 
-        // Noise filter: skip summaries, ongoing, and blanks
+        // Noise filter: skip summaries and blanks. Ongoing notifications are skipped too, EXCEPT
+        // calls — incoming/active calls are posted with FLAG_ONGOING_EVENT, so excluding them here
+        // would silently drop every call notification before it could be classified.
         if (notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) return
-        if (sbn.isOngoing) return
+        val isCall = notification.category == android.app.Notification.CATEGORY_CALL
+        if (sbn.isOngoing && !isCall) return
 
         // Dedup: same key within 2 s
         val now = System.currentTimeMillis()
@@ -108,6 +111,7 @@ class KineticNotificationListenerService : NotificationListenerService() {
                     packageName = sbn.packageName,
                     groupName = groupName,
                     contactName = contactName,
+                    category = notification.category,
                 )
             } catch (e: Exception) {
                 logger.error("ProcessNotification crashed for ${sbn.packageName}/$contactName", e)

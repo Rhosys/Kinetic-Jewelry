@@ -292,4 +292,71 @@ class ProcessNotificationUseCaseTest {
 
             assertTrue(btController.sentCommands.isEmpty())
         }
+
+    // ── Scenario 13: call category ────────────────────────────────────────────
+
+    @Test
+    fun `first call-category notification marks app as having calls`() =
+        runTest {
+            appRepo.upsert(watchedApp())
+            deviceRepo.upsert(alertDevice)
+
+            useCase.execute("com.example", "", "Alice", category = android.app.Notification.CATEGORY_CALL)
+
+            assertTrue(appRepo.getByPackageName("com.example")!!.hasCallCategory)
+        }
+
+    @Test
+    fun `call with no call-specific mode falls back to app default vibration`() =
+        runTest {
+            appRepo.upsert(watchedApp(mode = VibrationMode.LONG_PULSE))
+            deviceRepo.upsert(alertDevice)
+
+            useCase.execute("com.example", "", "Alice", category = android.app.Notification.CATEGORY_CALL)
+
+            assertEquals(1, btController.sentCommands.size)
+            assertEquals(VibrationMode.LONG_PULSE.blocks, btController.sentCommands[0].blocks)
+        }
+
+    @Test
+    fun `call uses call-specific vibration mode when configured`() =
+        runTest {
+            appRepo.upsert(
+                watchedApp(mode = VibrationMode.SHORT_PULSE).copy(
+                    hasCallCategory = true,
+                    callVibrationMode = VibrationMode.SOS,
+                ),
+            )
+            deviceRepo.upsert(alertDevice)
+
+            useCase.execute("com.example", "", "Alice", category = android.app.Notification.CATEGORY_CALL)
+
+            assertEquals(1, btController.sentCommands.size)
+            assertEquals(VibrationMode.SOS.blocks, btController.sentCommands[0].blocks)
+        }
+
+    @Test
+    fun `call bypasses contact-level whitelist`() =
+        runTest {
+            // Contact-level is a whitelist and Alice has no rule, so a normal message would be
+            // dropped (Scenario 4) — but a call notification should still ring regardless.
+            appRepo.upsert(watchedApp(mode = VibrationMode.HEARTBEAT, contactLevelEnabled = true))
+            deviceRepo.upsert(alertDevice)
+
+            useCase.execute("com.example", "", "Alice", category = android.app.Notification.CATEGORY_CALL)
+
+            assertEquals(1, btController.sentCommands.size)
+            assertEquals(VibrationMode.HEARTBEAT.blocks, btController.sentCommands[0].blocks)
+        }
+
+    @Test
+    fun `regular message does not mark app as having calls`() =
+        runTest {
+            appRepo.upsert(watchedApp())
+            deviceRepo.upsert(alertDevice)
+
+            useCase.execute("com.example", "", "Alice")
+
+            assertTrue(!appRepo.getByPackageName("com.example")!!.hasCallCategory)
+        }
 }

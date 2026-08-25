@@ -153,6 +153,16 @@ class AppFilterViewModel
             }
         }
 
+        fun setAppCallVibrationMode(
+            packageName: String,
+            mode: VibrationMode?,
+        ) {
+            viewModelScope.launch {
+                val existing = appRepo.getByPackageName(packageName) ?: return@launch
+                appRepo.upsert(existing.copy(callVibrationMode = mode))
+            }
+        }
+
         fun setContactVibrationMode(
             contact: ContactFilter,
             mode: VibrationMode?,

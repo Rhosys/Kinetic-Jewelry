@@ -18,19 +18,34 @@ class ProcessNotificationUseCase
             packageName: String,
             groupName: String,
             contactName: String?,
+            category: String? = null,
         ) {
             if (contactName.isNullOrBlank()) {
                 logger.info("Notification skipped: contactName is blank for $packageName")
                 return
             }
 
-            val appFilter = appFilterRepository.getByPackageName(packageName)
+            var appFilter = appFilterRepository.getByPackageName(packageName)
             if (appFilter == null) {
                 logger.info("Notification skipped: $packageName not in app filter list")
                 return
             }
             if (!appFilter.isWatched) {
                 logger.info("Notification ignored: $packageName is not watched")
+                return
+            }
+
+            val isCall = category == android.app.Notification.CATEGORY_CALL
+            if (isCall && !appFilter.hasCallCategory) {
+                appFilter = appFilter.copy(hasCallCategory = true)
+                appFilterRepository.upsert(appFilter)
+                logger.info("Detected call-category notification from $packageName; call vibration option enabled")
+            }
+
+            if (isCall) {
+                val callMode = appFilter.callVibrationMode ?: appFilter.vibrationMode
+                logger.info("Call notification matched: $packageName/$contactName → ${callMode.displayName}")
+                dispatcher.dispatch(callMode.blocks)
                 return
             }
 
